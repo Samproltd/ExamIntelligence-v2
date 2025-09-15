@@ -1,0 +1,21 @@
+---
+description: Ensures Cursor respects the current codebase structure and logic
+globs: ["**/*.ts", "**/*.tsx"]
+alwaysApply: true
+---
+---
+description: Ensures Cursor respects the current codebase structure and logic
+globs: ["**/*.ts", "**/*.tsx"]
+alwaysApply: true
+---
+
+- Analyze the existing code structure and logic before suggesting changes.
+- Preserve the current design, including file organization, component patterns, and data flows, unless explicitly requested to refactor.
+- Only enhance or add functionality as specified, avoiding unnecessary rewrites.
+- If a change risks altering existing behavior, explain the impact and suggest minimal adjustments.
+
+Example:
+When adding a new API route:
+- Keep the existing route structure in `@app/api`.
+- Reuse existing error-handling patterns from `@app/api/utils/error.ts`.
+- Do not modify unrelated routes or logic.

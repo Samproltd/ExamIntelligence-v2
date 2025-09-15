@@ -1,0 +1,21 @@
+---
+description: Maintains consistency in Next.js API and page routes
+globs: ["**/app/**/*.ts", "**/api/**/*.ts"]
+alwaysApply: true
+---
+---
+description: Maintains consistency in Next.js API and page routes
+globs: ["**/app/**/*.ts", "**/api/**/*.ts"]
+alwaysApply: true
+---
+
+- Follow the existing Next.js app router structure in `@app`.
+- Reuse error-handling and response patterns from `@app/api/utils`.
+- Ensure new routes or pages integrate with existing middleware from `@middleware`.
+- Do not modify unrelated routes or middleware unless explicitly requested.
+
+Example:
+When adding a new API route:
+- Place it in `@app/api` following existing folder patterns.
+- Use the response helper from `@app/api/utils/response.ts`.
+- Avoid changing existing routes or middleware logic.

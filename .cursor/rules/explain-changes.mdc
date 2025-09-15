@@ -1,0 +1,20 @@
+---
+description: Requires Cursor to explain and justify code changes
+globs: ["**/*.ts", "**/*.tsx"]
+alwaysApply: true
+---
+---
+description: Requires Cursor to explain and justify code changes
+globs: ["**/*.ts", "**/*.tsx"]
+alwaysApply: true
+---
+
+- Provide a brief explanation of why a change is suggested, especially if it modifies existing code.
+- Highlight how the change preserves or enhances functionality.
+- Suggest tests or checks to verify that existing behavior is unaffected.
+- If a change is significant, propose it as an optional refactor with clear benefits.
+
+Example:
+When suggesting a new feature:
+- Explain: "This adds a filter to the list component to support sorting, reusing the existing state logic."
+- Suggest: "Test the list rendering to ensure existing items display correctly."

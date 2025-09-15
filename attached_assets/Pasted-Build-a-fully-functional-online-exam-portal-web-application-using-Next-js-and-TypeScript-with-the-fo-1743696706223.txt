@@ -1,0 +1,52 @@
+Build a fully functional online exam portal web application using Next.js and TypeScript with the following detailed specifications:
+
+1. Tech Stack & Architecture:
+   - Frontend: Next.js using file-based routing.
+   - Backend: Next.js API Routes.
+   - Database: MongoDB (integrated using Mongoose) hosted on MongoDB Atlas.
+   - State Management: Redux.
+   - Authentication: JWT-based authentication for all API endpoints.
+   - UI/UX: A clean and attractive interface using silent color combinations with blue as the primary color; ensure a responsive design for all screen sizes.
+   - Reusable Components: Create modular, reusable UI components (e.g., Navbar, Footer, Buttons, Cards).
+   - Create a modular and scalable folder structure that includes separate directories for pages, components, API routes, models, and utilities.
+   - Ensure that all pages and API endpoints are connected correctly.
+
+2. User Roles & Workflow:
+   - Default Admin User:  
+     - There is a default administrator who handles all functionalities such as creating and managing subjects, courses, exams, and users.
+     - Create a default admin user who will have complete control over subjects, courses, exams, and student management.
+     - Ensure role-based access control so that only admins can access administrative routes.
+
+
+   - Student Role:  
+     - Students can register/login, view subjects and courses, take exams, and view their results.
+   
+3. Detailed Exam Workflow:
+   - Administrator Setup & Content Creation:
+     - The admin logs in via secure JWT authentication.
+     - The admin creates subjects (e.g., Science, Mathematics).
+     - Under each subject, the admin creates courses (e.g., Algebra under Mathematics).
+     - For each course, the admin sets up exams that consist solely of MCQs. During exam creation, parameters such as exam name, duration (timer-based), and total marks are specified.
+     - The admin populates each exam with MCQ questions, including multiple answer options with one marked as correct.
+   
+   - Student Registration & Dashboard:
+     - Students register and log in securely.
+     - Upon login, students access a dashboard where they can browse available subjects and courses.
+     - Students select a course and view available exams.
+   
+   - Exam Participation Process:
+     - Before starting the exam, students are presented with detailed instructions including exam duration and number of questions.
+     - On starting the exam, a countdown timer begins; students answer MCQs with the ability to navigate between questions.
+     - The system auto-saves progress at intervals and auto-submits the exam when the time expires, or allows manual submission before time is up.
+   
+   - Post-Exam Processing & Results:
+     - Exams are automatically graded (since they only support MCQs), and results are stored in the database.
+     - Students immediately receive feedback and a detailed performance report.
+     - The admin can view aggregated analytics and individual student performance for further insights.
+
+4. Additional Requirements:
+   - Ensure that all pages are connected with their respective API endpoints, following the file-based routing of Next.js.
+   - The overall project should be structured for scalability and maintainability with a modular folder structure.
+
+Implement the complete exam portal strictly according to these specifications. The application should be built as a Next.js project using TypeScript, Redux for state management, JWT for secure authentication, and MongoDB as the database. All functionality should be fully integrated—from admin content creation to student exam participation and result processing—ensuring a seamless, responsive, and attractive user experience.
+

@@ -1,0 +1,27 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+echo "🔍 Running pre-commit checks..."
+
+# Run lint-staged
+echo "📝 Running lint-staged..."
+npx lint-staged || {
+  echo "❌ Lint-staged failed. Please fix the issues before committing."
+  exit 1
+}
+
+# Run type checking
+echo "🔍 Running type checking..."
+npm run type-check || {
+  echo "❌ Type checking failed. Please fix the type errors before committing."
+  exit 1
+}
+
+# Run linting
+echo "🔍 Running linting..."
+npm run lint || {
+  echo "❌ Linting failed. Please fix the linting errors before committing."
+  exit 1
+}
+
+echo "✅ All checks passed! You can commit your changes." 

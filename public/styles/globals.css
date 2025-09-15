@@ -1,0 +1,25 @@
+/* Add the following styles for certificate printing */
+@media print {
+  body {
+    margin: 0;
+    padding: 0;
+    background: white;
+  }
+
+  .certificate-container {
+    margin: 0 auto;
+    padding: 0;
+    border: none;
+    box-shadow: none;
+    page-break-inside: avoid;
+  }
+
+  /* Hide navigation and buttons during print  */
+  button,
+  .print-hide,
+  nav,
+  header,
+  footer {
+    display: none !important;
+  }
+}

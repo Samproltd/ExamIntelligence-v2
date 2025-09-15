@@ -1,0 +1,21 @@
+---
+description: Ensures Cursor makes minimal, targeted changes to avoid breaking functionality
+globs: ["**/*.ts", "**/*.tsx"]
+alwaysApply: true
+---
+---
+description: Ensures Cursor makes minimal, targeted changes to avoid breaking functionality
+globs: ["**/*.ts", "**/*.tsx"]
+alwaysApply: true
+---
+
+- Suggest the smallest possible changes to achieve the requested feature or fix.
+- Avoid modifying unrelated code, such as unchanged components, hooks, or database queries.
+- When enhancing code, maintain existing TypeScript types, React component props, and MongoDB schema patterns.
+- If unsure about the scope, ask for clarification before proposing changes.
+
+Example:
+When adding a new field to a form:
+- Update only the relevant component in `@components/forms`.
+- Reuse existing validation logic from `@lib/validation`.
+- Do not alter the form’s styling or submission logic unless specified.

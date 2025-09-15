@@ -1,0 +1,21 @@
+---
+description: Ensures consistent React component structure and patterns
+globs: ["**/*.tsx", "**/components/**/*.tsx"]
+alwaysApply: true
+---
+---
+description: Ensures consistent React component structure and patterns
+globs: ["**/*.tsx", "**/components/**/*.tsx"]
+alwaysApply: true
+---
+
+- Follow the existing component structure: props interface at the top, named export, and styles at the bottom.
+- Reuse existing hooks from `@hooks` and utilities from `@lib` where applicable.
+- Avoid altering unrelated component logic or styles when adding new features.
+- Maintain existing state management patterns (e.g., React hooks or context).
+
+Example:
+When adding a new feature to a component:
+- Use the pattern in `@components/Button.tsx`.
+- Keep existing props and state unchanged unless specified.
+- Do not modify styles in `@styles` unless requested.

@@ -1,0 +1,21 @@
+---
+description: Guides Cursor to handle MongoDB interactions safely and consistently
+globs: ["**/*.ts", "**/api/**/*.ts"]
+alwaysApply: true
+---
+---
+description: Guides Cursor to handle MongoDB interactions safely and consistently
+globs: ["**/*.ts", "**/api/**/*.ts"]
+alwaysApply: true
+---
+
+- Analyze existing MongoDB schemas and queries in `@lib/models` before suggesting changes.
+- Use the existing MongoDB connection pattern from `@lib/db.ts`.
+- Validate all inputs before querying the database to prevent injection risks.
+- Preserve existing query patterns and indexes unless explicitly requested to optimize.
+
+Example:
+When adding a new database query:
+- Follow the structure in `@lib/models/user.ts`.
+- Reuse the connection logic in `@lib/db.ts`.
+- Do not modify unrelated schemas or queries.

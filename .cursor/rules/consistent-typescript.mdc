@@ -1,0 +1,20 @@
+---
+description: Enforces consistent TypeScript practices across the codebase
+globs: ["**/*.ts", "**/*.tsx"]
+alwaysApply: true
+---
+---
+description: Enforces consistent TypeScript practices across the codebase
+globs: ["**/*.ts", "**/*.tsx"]
+alwaysApply: true
+---
+
+- Use explicit TypeScript types for all function parameters, return values, and React component props.
+- Follow the existing type patterns defined in `@types/index.ts`.
+- Avoid using `any` unless unavoidable, and suggest stricter types where possible.
+- Ensure type changes do not break existing functionality or MongoDB schema compatibility.
+
+Example:
+When adding a new prop to a component:
+- Define the prop type in the component’s interface, matching `@types/components.ts`.
+- Update related types only if necessary, preserving existing type safety.
