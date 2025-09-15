@@ -26,30 +26,42 @@ const User = mongoose.models.User || mongoose.model('User', userSchema);
 
 async function seedAdmin() {
   try {
-    console.log('Connecting to MongoDB...', process.env.MONGODB_URI);
-    await mongoose.connect(process.env.MONGODB_URI);
+    // Use default MongoDB URI if not provided
+    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/exam-portal';
+    console.log('Connecting to MongoDB...', mongoUri);
+    await mongoose.connect(mongoUri);
     console.log('Connected to MongoDB');
 
     // Check if admin already exists
-    const existingAdmin = await User.findOne({ email: process.env.ADMIN_EMAIL });
+    const existingAdmin = await User.findOne({ email: 'examadmin@gmail.com' });
     if (existingAdmin) {
       console.log('Admin user already exists:', existingAdmin.email);
+      console.log('Updating password...');
+      
+      // Update the password
+      const hashedPassword = await bcrypt.hash('Admin@123', 10);
+      existingAdmin.password = hashedPassword;
+      await existingAdmin.save();
+      console.log('Admin password updated successfully');
       return;
     }
 
     // Hash the password
-    const hashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD, 10);
+    const hashedPassword = await bcrypt.hash('Admin@123', 10);
 
     // Create admin user
     const admin = new User({
-      name: process.env.ADMIN_NAME,
-      email: process.env.ADMIN_EMAIL,
+      name: 'Exam Admin',
+      email: 'examadmin@gmail.com',
       password: hashedPassword,
       role: 'admin',
     });
 
     await admin.save();
-    console.log('Admin user created successfully with email:', process.env.ADMIN_EMAIL);
+    console.log('Admin user created successfully!');
+    console.log('Email: examadmin@gmail.com');
+    console.log('Password: Admin@123');
+    console.log('Role: admin');
   } catch (error) {
     console.error('Error seeding admin:', error);
   } finally {

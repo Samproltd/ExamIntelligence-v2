@@ -85,7 +85,6 @@ try {
   // Try to retrieve the existing model
   Batch = mongoose.model<IBatch>('Batch');
 } catch (error) {
-  console.log(error);
   // Model doesn't exist, so register it
   Batch = mongoose.model<IBatch>('Batch', BatchSchema);
 }

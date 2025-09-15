@@ -119,7 +119,6 @@ try {
   // Try to retrieve the existing model
   User = mongoose.model<IUser>('User');
 } catch (error) {
-  console.log('Error creating User model:', error);
   // Model doesn't exist, so register it
   User = mongoose.model<IUser>('User', UserSchema);
 }
