@@ -1,55 +1,75 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-
-name: Build and deploy Node.js app to Azure Web App - examIntelligence-with-AI
+name: Build and deploy Next.js app to Azure Web App
 
 on:
   push:
     branches:
       - main
+      - development
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
     permissions:
-      contents: read #This is required for actions/checkout
+      contents: read # Required for actions/checkout
+      id-token: write # For Azure login (optional with publish profile)
+
+    environment:
+      name: ${{ github.ref_name == 'main' && 'Production' || 'Development' }}
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Set up Node.js version
         uses: actions/setup-node@v3
         with:
           node-version: '20.x'
 
-      - name: npm install, build, and test
+      - name: npm install and build
         run: |
           npm install
-          npm run build --if-present
-          npm run test --if-present
+          npm run build
+          cp -r public/* .next/standalone/public
+          cp -r .next/static .next/standalone/.next/static
 
-      - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v4
-        with:
-          name: node-app
-          path: .
+      - name: Debug directory contents
+        run: |
+          echo "Listing files in working directory:"
+          ls -R
+          echo "Checking for Next.js build output and key files:"
+          [ -d .next ] && echo ".next/ exists" || echo ".next/ not found"
+          [ -d public ] && echo "public/ exists" || echo "public/ not found"
+          [ -d pages ] && echo "pages/ exists" || echo "pages/ not found"
+          [ -f package.json ] && echo "package.json exists" || echo "package.json not found"
+          [ -f next.config.js ] && echo "next.config.js exists" || echo "next.config.js not found"
 
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    
-    steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v4
-        with:
-          name: node-app
-      
-      - name: 'Deploy to Azure Web App'
+      - name: Prepare deployment package
+        run: |
+          mkdir -p deploy
+          cp -r .next/ deploy/ || { echo ".next/ not found, build may have failed"; exit 1; }
+          cp package.json deploy/
+          cp package-lock.json deploy/ || true
+          cp next.config.js deploy/ || true
+          cp postcss.config.js deploy/ || true
+          cp tailwind.config.js deploy/ || true
+          cp tsconfig.json deploy/ || true
+          [ -d public ] && cp -r public/ deploy/ || true
+          [ -d pages ] && cp -r pages/ deploy/ || true
+          echo "Deployment package contents:"
+          ls -R deploy
+
+      - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'examIntelligence-with-AI'
+          app-name: ${{ github.ref_name == 'main' && 'examIntelligence-with-AI' }}
           slot-name: 'Production'
-          package: .
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_24E1C678709145E49235A6BF69E30F09 }}
+          package: deploy/
+          clean: true
+          publish-profile: ${{ github.ref_name == 'main' && secrets.SAMPRO_EXAM_TOOL_SECRECT }}
