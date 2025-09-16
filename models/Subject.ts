@@ -3,7 +3,9 @@ import mongoose from 'mongoose';
 export interface ISubject extends mongoose.Document {
   name: string;
   description: string;
+  college: mongoose.Types.ObjectId; // Required
   createdBy: mongoose.Types.ObjectId;
+  isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -20,10 +22,19 @@ const SubjectSchema = new mongoose.Schema({
     required: [true, 'Please provide a description'],
     maxlength: [500, 'Description cannot be more than 500 characters'],
   },
+  college: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'College',
+    required: [true, 'College is required'],
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,
+  },
+  isActive: {
+    type: Boolean,
+    default: true,
   },
   createdAt: {
     type: Date,
@@ -41,4 +52,15 @@ SubjectSchema.pre<ISubject>('save', function (next) {
   next();
 });
 
-export default mongoose.models.Subject || mongoose.model<ISubject>('Subject', SubjectSchema);
+// Register the model if it hasn't been registered yet
+let Subject: mongoose.Model<ISubject>;
+
+try {
+  // Try to retrieve the existing model
+  Subject = mongoose.model<ISubject>('Subject');
+} catch (error) {
+  // Model doesn't exist, so register it
+  Subject = mongoose.model<ISubject>('Subject', SubjectSchema);
+}
+
+export default Subject;

@@ -10,6 +10,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key';
 export interface DecodedToken {
   userId: string;
   role: string;
+  college?: string;
+  subscriptionStatus?: string;
   iat: number;
   exp: number;
 }
@@ -31,8 +33,8 @@ declare module 'next' {
 }
 
 // Generate JWT token
-export const generateToken = (userId: string, role: string): string => {
-  const payload = { userId, role };
+export const generateToken = (userId: string, role: string, college?: string, subscriptionStatus?: string): string => {
+  const payload = { userId, role, college, subscriptionStatus };
   // Use any to get around TypeScript's strict typing for jwt options
   const options: any = {
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
@@ -103,7 +105,7 @@ export const requireAdmin = (handler: any) => async (req: NextApiRequest, res: N
       return res.status(401).json({ success: false, message: 'Invalid token' });
     }
 
-    if (decoded.role !== 'admin') {
+    if (!['admin', 'college_admin', 'college_staff'].includes(decoded.role)) {
       return res.status(403).json({ success: false, message: 'Admin access required' });
     }
 
@@ -141,7 +143,7 @@ export const initializeDefaultAdmin = async () => {
         name: process.env.ADMIN_NAME || 'Administrator',
         email: process.env.ADMIN_EMAIL || 'admin@example.com',
         password: process.env.ADMIN_PASSWORD || 'Admin@123', // This will be hashed in the model's pre-save hook
-        role: 'admin',
+        role: 'super_admin',
       });
       console.log('Default admin user created');
     }

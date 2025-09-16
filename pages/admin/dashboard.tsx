@@ -144,6 +144,7 @@ const AdminDashboard: React.FC = () => {
     }).format(price);
   };
 
+
   if (loading) {
     return (
       <AdminLayout>

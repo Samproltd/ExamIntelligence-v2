@@ -7,7 +7,13 @@ export interface IUser extends mongoose.Document {
   lastName?: string;
   email: string;
   password: string;
-  role: 'admin' | 'student';
+  role: 'admin' | 'college_admin' | 'college_staff' | 'student';
+  college: mongoose.Types.ObjectId; // Required for all users
+  subscription?: mongoose.Types.ObjectId; // Reference to StudentSubscription
+  subscriptionStatus: 'active' | 'expired' | 'suspended' | 'none'; // Current status
+  isVerified: boolean;
+  verificationToken?: string;
+  lastLoginAt?: Date;
   batch?: mongoose.Types.ObjectId;
   rollNumber?: string;
   dateOfBirth?: Date;
@@ -53,8 +59,32 @@ const UserSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['admin', 'student'],
+      enum: ['admin', 'college_admin', 'college_staff', 'student'],
       default: 'student',
+    },
+    college: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'College',
+      required: [true, 'College is required'],
+    },
+    subscription: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'StudentSubscription',
+    },
+    subscriptionStatus: {
+      type: String,
+      enum: ['active', 'expired', 'suspended', 'none'],
+      default: 'none',
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    verificationToken: {
+      type: String,
+    },
+    lastLoginAt: {
+      type: Date,
     },
     batch: {
       type: mongoose.Schema.Types.ObjectId,

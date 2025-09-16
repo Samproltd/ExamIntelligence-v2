@@ -49,8 +49,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(403).json({ success: false, message: 'Your account has been blocked.' });
     }
 
-    // Generate JWT token
-    const token = generateToken(user._id.toString(), user.role);
+    // Generate JWT token with college and subscription context
+    const token = generateToken(
+      user._id.toString(), 
+      user.role, 
+      user.college?.toString(), 
+      user.subscriptionStatus
+    );
 
     // Return user data and token
     return res.status(200).json({

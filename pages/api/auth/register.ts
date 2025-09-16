@@ -15,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Check if default admin needs to be created
     await initializeDefaultAdmin();
 
-    const { name, email, password, role, batch, rollNumber } = req.body;
+    const { name, email, password, role, batch, rollNumber, college, mobile, dateOfBirth } = req.body;
     // console.log(req.body);
 
     // Validate input
@@ -23,6 +23,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({
         success: false,
         message: 'Please provide name, email, and password',
+      });
+    }
+
+    // For students, college is required
+    if (role === 'student' && !college) {
+      return res.status(400).json({
+        success: false,
+        message: 'College selection is required for students',
       });
     }
 
@@ -73,7 +81,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       email,
       password,
       role: userRole,
+      subscriptionStatus: 'none',
+      isVerified: true, // Auto-verify for now
     };
+
+    // Add college if provided
+    if (college) {
+      userData.college = college;
+    }
 
     // Add batch if provided for students
     if (batch && userRole === 'student') {
@@ -85,13 +100,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       userData.rollNumber = rollNumber;
     }
 
+    // Add mobile if provided
+    if (mobile) {
+      userData.mobile = mobile;
+    }
+
+    // Add date of birth if provided
+    if (dateOfBirth) {
+      userData.dateOfBirth = new Date(dateOfBirth);
+    }
+
     // Create new user
     const user = await mongooseUtils.create(User, userData);
     // Cast user to IUser since we know create() returns a single document
     const createdUser = user as IUser;
 
-    // Generate JWT token
-    const token = generateToken(createdUser._id.toString(), createdUser.role);
+    // Generate JWT token with college and subscription context
+    const token = generateToken(
+      createdUser._id.toString(), 
+      createdUser.role, 
+      createdUser.college?.toString(), 
+      createdUser.subscriptionStatus
+    );
 
     // Return user data and token
     const responseData: any = {

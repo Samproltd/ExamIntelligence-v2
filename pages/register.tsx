@@ -1,175 +1,532 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { useDispatch, useSelector } from 'react-redux';
-import { register, clearError } from '../store/slices/authSlice';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  UserIcon, 
+  BuildingOfficeIcon,
+  CreditCardIcon,
+  CheckCircleIcon,
+  ArrowRightIcon,
+  ArrowLeftIcon
+} from '@heroicons/react/24/outline';
 import Layout from '../components/Layout';
-import Button from '../components/Button';
-import { RootState, AppDispatch } from '../store';
+import CollegeSelector from '../components/college/CollegeSelector';
+import SubscriptionPlans from '../components/subscription/SubscriptionPlans';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
+
+interface College {
+  _id: string;
+  name: string;
+  code: string;
+  address: string;
+  contactEmail: string;
+  isActive: boolean;
+  branding: {
+    primaryColor: string;
+    secondaryColor: string;
+    logo?: string;
+  };
+}
+
+interface SubscriptionPlan {
+  _id: string;
+  name: string;
+  description: string;
+  duration: number;
+  price: number;
+  features: string[];
+  isActive: boolean;
+  isDefault: boolean;
+  college: {
+    _id: string;
+    name: string;
+    code: string;
+  };
+}
 
 const Register: React.FC = () => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [validationErrors, setValidationErrors] = useState<{
-    name?: string;
-    email?: string;
-    password?: string;
-    confirmPassword?: string;
-  }>({});
-  
-  const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
-  const { isAuthenticated, loading, error, user } = useSelector(
-    (state: RootState) => state.auth
-  );
+  
+  // Form state
+  const [currentStep, setCurrentStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  
+  // Step 1: Basic Information
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    rollNumber: '',
+    mobile: '',
+    dateOfBirth: '',
+  });
+  
+  // Step 2: College Selection
+  const [selectedCollege, setSelectedCollege] = useState<College | null>(null);
+  
+  // Step 3: Subscription Selection
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
+  const [skipSubscription, setSkipSubscription] = useState(false);
+  
+  // Validation errors
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   
   useEffect(() => {
-    // Clear any existing errors when component mounts
-    dispatch(clearError());
-    
-    // Redirect if already authenticated
-    if (isAuthenticated) {
-      if (user?.role === 'admin') {
-        router.push('/admin');
-      } else {
-        router.push('/student');
-      }
+    // Check if user is already authenticated
+    const token = localStorage.getItem('token');
+    if (token) {
+      router.push('/student');
     }
-  }, [isAuthenticated, dispatch, router, user]);
+  }, [router]);
   
-  const validateForm = (): boolean => {
-    const errors: {
-      name?: string;
-      email?: string;
-      password?: string;
-      confirmPassword?: string;
-    } = {};
+  const validateStep = (step: number): boolean => {
+    const errors: Record<string, string> = {};
     
-    if (!name.trim()) {
-      errors.name = 'Name is required';
-    }
-    
-    if (!email.trim()) {
-      errors.email = 'Email is required';
-    } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(email)) {
-      errors.email = 'Invalid email address';
-    }
-    
-    if (!password) {
-      errors.password = 'Password is required';
-    } else if (password.length < 6) {
-      errors.password = 'Password must be at least 6 characters';
-    }
-    
-    if (password !== confirmPassword) {
-      errors.confirmPassword = 'Passwords do not match';
+    if (step === 1) {
+      if (!formData.name.trim()) {
+        errors.name = 'Name is required';
+      }
+      
+      if (!formData.email.trim()) {
+        errors.email = 'Email is required';
+      } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(formData.email)) {
+        errors.email = 'Invalid email address';
+      }
+      
+      if (!formData.password) {
+        errors.password = 'Password is required';
+      } else if (formData.password.length < 6) {
+        errors.password = 'Password must be at least 6 characters';
+      }
+      
+      if (formData.password !== formData.confirmPassword) {
+        errors.confirmPassword = 'Passwords do not match';
+      }
+    } else if (step === 2) {
+      if (!selectedCollege) {
+        errors.college = 'Please select a college';
+      }
     }
     
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
-  
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
     
-    if (validateForm()) {
-      await dispatch(register({ name, email, password }));
+    // Clear validation error for this field
+    if (validationErrors[name]) {
+      setValidationErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  const handleNext = () => {
+    if (validateStep(currentStep)) {
+      setCurrentStep(prev => prev + 1);
+      setError(null);
+    }
+  };
+
+  const handlePrevious = () => {
+    setCurrentStep(prev => prev - 1);
+    setError(null);
+  };
+
+  const handleSubmit = async () => {
+    if (!validateStep(2)) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Register user
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          role: 'student',
+          college: selectedCollege?._id,
+          rollNumber: formData.rollNumber,
+          mobile: formData.mobile,
+          dateOfBirth: formData.dateOfBirth,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Registration failed');
+      }
+
+      const data = await response.json();
+      
+      // Store token
+      localStorage.setItem('token', data.token);
+      
+      // If subscription is selected, redirect to payment
+      if (selectedPlan && !skipSubscription) {
+        router.push(`/student/subscription-plans/payment?planId=${selectedPlan._id}`);
+      } else {
+        setSuccess(true);
+        setTimeout(() => {
+          router.push('/student');
+        }, 2000);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Registration failed');
+    } finally {
+      setLoading(false);
     }
   };
   
-  return (
-    <Layout title="Register - Online Exam Portal">
-      <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-8">
-        <h1 className="text-2xl font-bold text-center mb-6">Create an Account</h1>
-        
-        {error && (
-          <div className="alert alert-error mb-4">
-            {error}
-          </div>
-        )}
-        
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="name">Full Name</label>
-            <input
-              type="text"
-              id="name"
-              className={`form-control ${validationErrors.name ? 'border-red-500' : ''}`}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Enter your full name"
-            />
-            {validationErrors.name && (
-              <p className="text-red-500 text-sm mt-1">{validationErrors.name}</p>
-            )}
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input
-              type="email"
-              id="email"
-              className={`form-control ${validationErrors.email ? 'border-red-500' : ''}`}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
-            />
-            {validationErrors.email && (
-              <p className="text-red-500 text-sm mt-1">{validationErrors.email}</p>
-            )}
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              className={`form-control ${validationErrors.password ? 'border-red-500' : ''}`}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Create a password (min. 6 characters)"
-            />
-            {validationErrors.password && (
-              <p className="text-red-500 text-sm mt-1">{validationErrors.password}</p>
-            )}
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm Password</label>
-            <input
-              type="password"
-              id="confirmPassword"
-              className={`form-control ${validationErrors.confirmPassword ? 'border-red-500' : ''}`}
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirm your password"
-            />
-            {validationErrors.confirmPassword && (
-              <p className="text-red-500 text-sm mt-1">{validationErrors.confirmPassword}</p>
-            )}
-          </div>
-          
-          <Button 
-            type="submit" 
-            variant="primary" 
-            fullWidth 
-            disabled={loading}
-            className="mt-4"
+  if (success) {
+    return (
+      <Layout title="Registration Successful - ExamIntelligence">
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="text-center bg-white rounded-xl shadow-lg p-8 max-w-md mx-4"
           >
-            {loading ? 'Registering...' : 'Register'}
-          </Button>
-        </form>
-        
-        <div className="mt-6 text-center">
-          <p>Already have an account?{' '}
-            <Link href="/login">
-              <span className="text-primary-color hover:underline">
-                Log in here
-              </span>
-            </Link>
-          </p>
+            <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
+              <CheckCircleIcon className="h-8 w-8 text-green-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Registration Successful!</h2>
+            <p className="text-gray-600">Redirecting to your dashboard...</p>
+          </motion.div>
+        </div>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout title="Register - ExamIntelligence">
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Your Account</h1>
+            <p className="text-gray-600">Join thousands of students preparing for their exams</p>
+          </div>
+
+          {/* Progress Steps */}
+          <div className="mb-8">
+            <div className="flex items-center justify-center space-x-8">
+              {[1, 2, 3].map((step) => (
+                <div key={step} className="flex items-center">
+                  <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
+                    currentStep >= step 
+                      ? 'bg-blue-600 border-blue-600 text-white' 
+                      : 'bg-white border-gray-300 text-gray-400'
+                  }`}>
+                    {currentStep > step ? (
+                      <CheckCircleIcon className="h-6 w-6" />
+                    ) : (
+                      <span className="text-sm font-medium">{step}</span>
+                    )}
+                  </div>
+                  <div className="ml-3 hidden sm:block">
+                    <p className={`text-sm font-medium ${
+                      currentStep >= step ? 'text-blue-600' : 'text-gray-400'
+                    }`}>
+                      {step === 1 && 'Basic Info'}
+                      {step === 2 && 'College'}
+                      {step === 3 && 'Subscription'}
+                    </p>
+                  </div>
+                  {step < 3 && (
+                    <div className={`hidden sm:block w-16 h-0.5 ml-4 ${
+                      currentStep > step ? 'bg-blue-600' : 'bg-gray-300'
+                    }`} />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Error Message */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 bg-red-50 border border-red-200 rounded-md p-4"
+            >
+              <p className="text-sm text-red-700">{error}</p>
+            </motion.div>
+          )}
+
+          {/* Form Content */}
+          <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-8">
+            <AnimatePresence mode="wait">
+              {/* Step 1: Basic Information */}
+              {currentStep === 1 && (
+                <motion.div
+                  key="step1"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-6"
+                >
+                  <div className="text-center mb-6">
+                    <UserIcon className="mx-auto h-12 w-12 text-blue-600 mb-4" />
+                    <h2 className="text-2xl font-bold text-gray-900">Basic Information</h2>
+                    <p className="text-gray-600">Tell us about yourself</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Full Name *
+                      </label>
+                      <input
+                        type="text"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleInputChange}
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          validationErrors.name ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        placeholder="Enter your full name"
+                      />
+                      {validationErrors.name && (
+                        <p className="text-red-500 text-sm mt-1">{validationErrors.name}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Email Address *
+                      </label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          validationErrors.email ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        placeholder="Enter your email"
+                      />
+                      {validationErrors.email && (
+                        <p className="text-red-500 text-sm mt-1">{validationErrors.email}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Password *
+                      </label>
+                      <input
+                        type="password"
+                        name="password"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          validationErrors.password ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        placeholder="Create a password"
+                      />
+                      {validationErrors.password && (
+                        <p className="text-red-500 text-sm mt-1">{validationErrors.password}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Confirm Password *
+                      </label>
+                      <input
+                        type="password"
+                        name="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={handleInputChange}
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          validationErrors.confirmPassword ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        placeholder="Confirm your password"
+                      />
+                      {validationErrors.confirmPassword && (
+                        <p className="text-red-500 text-sm mt-1">{validationErrors.confirmPassword}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Roll Number
+                      </label>
+                      <input
+                        type="text"
+                        name="rollNumber"
+                        value={formData.rollNumber}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter your roll number"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Mobile Number
+                      </label>
+                      <input
+                        type="tel"
+                        name="mobile"
+                        value={formData.mobile}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter your mobile number"
+                      />
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Step 2: College Selection */}
+              {currentStep === 2 && (
+                <motion.div
+                  key="step2"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-6"
+                >
+                  <div className="text-center mb-6">
+                    <BuildingOfficeIcon className="mx-auto h-12 w-12 text-blue-600 mb-4" />
+                    <h2 className="text-2xl font-bold text-gray-900">Select Your College</h2>
+                    <p className="text-gray-600">Choose the college you're associated with</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      College *
+                    </label>
+                    <CollegeSelector
+                      selectedCollege={selectedCollege}
+                      onCollegeSelect={setSelectedCollege}
+                      placeholder="Search and select your college"
+                    />
+                    {validationErrors.college && (
+                      <p className="text-red-500 text-sm mt-1">{validationErrors.college}</p>
+                    )}
+                  </div>
+
+                  {selectedCollege && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="bg-blue-50 rounded-lg p-4"
+                    >
+                      <h3 className="font-medium text-blue-900 mb-2">Selected College</h3>
+                      <p className="text-blue-800">{selectedCollege.name}</p>
+                      <p className="text-sm text-blue-700">{selectedCollege.address}</p>
+                    </motion.div>
+                  )}
+                </motion.div>
+              )}
+
+              {/* Step 3: Subscription Selection */}
+              {currentStep === 3 && (
+                <motion.div
+                  key="step3"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-6"
+                >
+                  <div className="text-center mb-6">
+                    <CreditCardIcon className="mx-auto h-12 w-12 text-blue-600 mb-4" />
+                    <h2 className="text-2xl font-bold text-gray-900">Choose Your Plan</h2>
+                    <p className="text-gray-600">Select a subscription plan or skip for now</p>
+                  </div>
+
+                  {selectedCollege && (
+                    <SubscriptionPlans
+                      collegeId={selectedCollege._id}
+                      onPlanSelect={setSelectedPlan}
+                      showComparison={true}
+                      selectedPlanId={selectedPlan?._id}
+                    />
+                  )}
+
+                  <div className="flex items-center justify-center">
+                    <button
+                      type="button"
+                      onClick={() => setSkipSubscription(!skipSubscription)}
+                      className="flex items-center text-sm text-gray-600 hover:text-gray-800"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={skipSubscription}
+                        onChange={(e) => setSkipSubscription(e.target.checked)}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2"
+                      />
+                      Skip subscription for now (I'll choose later)
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Navigation Buttons */}
+            <div className="flex justify-between mt-8 pt-6 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={handlePrevious}
+                disabled={currentStep === 1}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ArrowLeftIcon className="h-4 w-4 mr-2" />
+                Previous
+              </button>
+
+              {currentStep < 3 ? (
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                >
+                  Next
+                  <ArrowRightIcon className="h-4 w-4 ml-2" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={loading}
+                  className="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? (
+                    <LoadingSpinner size="sm" color="white" />
+                  ) : (
+                    <>
+                      Complete Registration
+                      <CheckCircleIcon className="h-4 w-4 ml-2" />
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Login Link */}
+          <div className="text-center mt-6">
+            <p className="text-gray-600">
+              Already have an account?{' '}
+              <Link href="/login" className="text-blue-600 hover:text-blue-800 font-medium">
+                Sign in here
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
     </Layout>

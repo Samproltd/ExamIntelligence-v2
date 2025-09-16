@@ -4,6 +4,9 @@ export interface IBatch extends mongoose.Document {
   name: string;
   description: string;
   year: number;
+  college: mongoose.Types.ObjectId; // Required
+  department?: string;
+  semester?: number;
   isActive: boolean;
   maxAttempts: number;
   maxSecurityIncidents: number;
@@ -34,6 +37,21 @@ const BatchSchema = new mongoose.Schema(
       required: [true, 'Batch year is required'],
       min: [2000, 'Batch year must be at least 2000'],
       max: [2100, 'Batch year must be less than 2100'],
+    },
+    college: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'College',
+      required: [true, 'College is required'],
+    },
+    department: {
+      type: String,
+      trim: true,
+      maxlength: [100, 'Department name cannot be more than 100 characters'],
+    },
+    semester: {
+      type: Number,
+      min: [1, 'Semester must be at least 1'],
+      max: [12, 'Semester cannot be more than 12'],
     },
     isActive: {
       type: Boolean,

@@ -4,6 +4,7 @@ export interface IExam extends mongoose.Document {
   name: string;
   description: string;
   course: mongoose.Types.ObjectId;
+  college: mongoose.Types.ObjectId; // Required
   duration: number; // in minutes
   totalMarks: number;
   passPercentage: number;
@@ -12,6 +13,9 @@ export interface IExam extends mongoose.Document {
   assignedBatches?: mongoose.Types.ObjectId[]; // Array of batch IDs this exam is assigned to
   maxAttempts: number;
   createdBy: mongoose.Types.ObjectId;
+  isActive: boolean;
+  examType: 'practice' | 'assessment' | 'final';
+  proctoringLevel: 'basic' | 'advanced' | 'ai_enhanced';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -30,6 +34,11 @@ const ExamSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Course',
     required: [true, 'Please provide course ID'],
+  },
+  college: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'College',
+    required: [true, 'College is required'],
   },
   duration: {
     type: Number,
@@ -75,6 +84,20 @@ const ExamSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,
+  },
+  isActive: {
+    type: Boolean,
+    default: true,
+  },
+  examType: {
+    type: String,
+    enum: ['practice', 'assessment', 'final'],
+    default: 'assessment',
+  },
+  proctoringLevel: {
+    type: String,
+    enum: ['basic', 'advanced', 'ai_enhanced'],
+    default: 'basic',
   },
   createdAt: {
     type: Date,

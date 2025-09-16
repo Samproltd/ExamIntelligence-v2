@@ -25,13 +25,16 @@ if (!cached) {
 export const preloadModels = async () => {
   // Import all models to ensure they're registered
   await import('../models/Batch');
+  await import('../models/College');
   await import('../models/Course');
   await import('../models/Exam');
   await import('../models/Question');
   await import('../models/Result');
   await import('../models/SecurityIncident');
   await import('../models/Setting');
+  await import('../models/StudentSubscription');
   await import('../models/Subject');
+  await import('../models/SubscriptionPlan');
   await import('../models/User');
   await import('../models/ExamSuspension');
 };
