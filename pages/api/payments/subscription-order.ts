@@ -17,24 +17,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     await dbConnect();
 
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ success: false, message: 'Authentication required' });
+    const { planId, amount, currency = 'INR', isRegistration = false } = req.body;
+
+    // For registration flow, skip authentication
+    if (!isRegistration) {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ success: false, message: 'Authentication required' });
+      }
+
+      const token = authHeader.split(' ')[1];
+      const decoded = verifyToken(token);
+
+      if (!decoded) {
+        return res.status(401).json({ success: false, message: 'Invalid or expired token' });
+      }
+
+      // Only students can create subscription orders
+      if (decoded.role !== 'student') {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
     }
-
-    const token = authHeader.split(' ')[1];
-    const decoded = verifyToken(token);
-
-    if (!decoded) {
-      return res.status(401).json({ success: false, message: 'Invalid or expired token' });
-    }
-
-    // Only students can create subscription orders
-    if (decoded.role !== 'student') {
-      return res.status(403).json({ success: false, message: 'Access denied' });
-    }
-
-    const { planId, amount, currency = 'INR' } = req.body;
 
     console.log('Payment order request:', { planId, amount, currency });
 
@@ -74,25 +77,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Create Razorpay order
-    const orderOptions = {
+    const orderOptions: any = {
       amount: Math.round(amount * 100), // Razorpay expects amount in paise, ensure it's an integer
       currency: currency,
       receipt: `sub_${Date.now()}`, // Shortened receipt (max 40 chars)
       notes: {
         planId: planId,
-        userId: decoded.userId,
         planName: plan.name,
-        college: decoded.college,
         originalAmount: amount.toString(),
       },
     };
+
+    // Add user-specific notes only for regular flow
+    if (!isRegistration) {
+      const authHeader = req.headers.authorization;
+      const token = authHeader!.split(' ')[1];
+      const decoded = verifyToken(token);
+      orderOptions.notes.userId = decoded!.userId;
+      orderOptions.notes.college = decoded!.college;
+    }
 
     console.log('Razorpay order options:', orderOptions);
 
     const order = await razorpay.orders.create(orderOptions);
     
     console.log('Razorpay order created:', { id: order.id, amount: order.amount, currency: order.currency });
-    console.log('Order amount in rupees:', order.amount / 100);
+    console.log('Order amount in rupees:', Number(order.amount) / 100);
 
     return res.status(200).json({
       success: true,

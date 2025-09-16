@@ -157,48 +157,34 @@ const Register: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Register user
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: `${formData.firstName} ${formData.middleName ? formData.middleName + ' ' : ''}${formData.lastName}`.trim(),
-          firstName: formData.firstName,
-          middleName: formData.middleName,
-          lastName: formData.lastName,
-          email: formData.email,
-          password: formData.password,
-          role: 'student',
-          college: selectedCollege?._id,
-          mobile: formData.mobile,
-          dateOfBirth: formData.dateOfBirth,
-        }),
-      });
+      // Store registration data temporarily in localStorage for payment completion
+      const registrationData = {
+        name: `${formData.firstName} ${formData.middleName ? formData.middleName + ' ' : ''}${formData.lastName}`.trim(),
+        firstName: formData.firstName,
+        middleName: formData.middleName,
+        lastName: formData.lastName,
+        email: formData.email,
+        password: formData.password,
+        role: 'student',
+        college: selectedCollege?._id,
+        mobile: formData.mobile,
+        dateOfBirth: formData.dateOfBirth,
+        selectedPlan: selectedPlan,
+        selectedCollege: selectedCollege,
+      };
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Registration failed');
-      }
-
-      const data = await response.json();
+      // Store in localStorage for payment completion
+      localStorage.setItem('pendingRegistration', JSON.stringify(registrationData));
       
-      // Store token
-      localStorage.setItem('token', data.token);
-      
-      // If subscription is selected, redirect to payment
+      // Redirect to payment page with plan ID
       if (selectedPlan) {
-        router.push(`/student/subscription-plans/payment?planId=${selectedPlan._id}`);
+        router.push(`/student/subscription-plans/payment?planId=${selectedPlan._id}&registration=true`);
       } else {
-        setSuccess(true);
-        setTimeout(() => {
-          router.push('/student');
-        }, 2000);
+        setError('Please select a subscription plan to continue');
+        setLoading(false);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
-    } finally {
       setLoading(false);
     }
   };

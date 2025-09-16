@@ -59,25 +59,43 @@ const SubscriptionPayment: React.FC = () => {
 
   const checkUserAuth = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        router.push('/login');
-        return;
+      const isRegistration = router.query.registration === 'true';
+      
+      if (isRegistration) {
+        // For registration flow, get user data from pending registration
+        const pendingRegistration = localStorage.getItem('pendingRegistration');
+        if (pendingRegistration) {
+          const registrationData = JSON.parse(pendingRegistration);
+          setUser({
+            name: registrationData.name,
+            email: registrationData.email,
+          });
+        } else {
+          router.push('/register');
+          return;
+        }
+      } else {
+        // Regular flow - check authentication
+        const token = localStorage.getItem('token');
+        if (!token) {
+          router.push('/login');
+          return;
+        }
+
+        const response = await fetch('/api/auth/check', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          router.push('/login');
+          return;
+        }
+
+        const data = await response.json();
+        setUser(data.user);
       }
-
-      const response = await fetch('/api/auth/check', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        router.push('/login');
-        return;
-      }
-
-      const data = await response.json();
-      setUser(data.user);
     } catch (error) {
       console.error('Auth check error:', error);
       router.push('/login');
@@ -87,19 +105,34 @@ const SubscriptionPayment: React.FC = () => {
   const fetchPlanDetails = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/student/subscription-plans/${planId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const isRegistration = router.query.registration === 'true';
+      
+      if (isRegistration) {
+        // For registration flow, fetch plan without authentication
+        const response = await fetch(`/api/student/subscription-plans/${planId}`);
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch plan details');
+        if (!response.ok) {
+          throw new Error('Failed to fetch plan details');
+        }
+
+        const data = await response.json();
+        setPlan(data.data);
+      } else {
+        // Regular flow - fetch with authentication
+        const token = localStorage.getItem('token');
+        const response = await fetch(`/api/student/subscription-plans/${planId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch plan details');
+        }
+
+        const data = await response.json();
+        setPlan(data.data);
       }
-
-      const data = await response.json();
-      setPlan(data.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -115,20 +148,28 @@ const SubscriptionPayment: React.FC = () => {
       setError(null);
 
       // Create Razorpay order
+      const isRegistration = router.query.registration === 'true';
       const orderPayload = {
         planId: plan._id,
         amount: plan.price,
         currency: 'INR',
+        isRegistration: isRegistration,
       };
       
       console.log('Sending payment order request:', orderPayload);
       
+      const headers: any = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Only add authorization header for regular flow
+      if (!isRegistration) {
+        headers['Authorization'] = `Bearer ${localStorage.getItem('token')}`;
+      }
+      
       const orderResponse = await fetch('/api/payments/subscription-order', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
+        headers,
         body: JSON.stringify(orderPayload),
       });
 
@@ -165,38 +206,68 @@ const SubscriptionPayment: React.FC = () => {
         },
         handler: async function (response: any) {
           try {
-            // Verify payment
-            const verifyResponse = await fetch('/api/payments/subscription-verify', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`,
-              },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                planId: plan._id,
-              }),
-            });
+            // Check if this is a registration flow
+            const isRegistration = router.query.registration === 'true';
+            const pendingRegistration = localStorage.getItem('pendingRegistration');
+            
+            if (isRegistration && pendingRegistration) {
+              // This is a registration flow - register user after payment verification
+              const registrationData = JSON.parse(pendingRegistration);
+              
+              // First verify payment
+              const verifyResponse = await fetch('/api/payments/subscription-verify', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  planId: plan._id,
+                  registrationData: registrationData, // Include registration data
+                }),
+              });
 
-            if (verifyResponse.ok) {
-              // Payment successful - redirect to student dashboard
-              router.push('/student');
+              if (verifyResponse.ok) {
+                const verifyData = await verifyResponse.json();
+                
+                // Store token and clear pending registration
+                localStorage.setItem('token', verifyData.token);
+                localStorage.removeItem('pendingRegistration');
+                
+                // Redirect to student dashboard
+                router.push('/student');
+              } else {
+                throw new Error('Payment verification failed');
+              }
             } else {
-              throw new Error('Payment verification failed');
+              // Regular payment flow for existing users
+              const verifyResponse = await fetch('/api/payments/subscription-verify', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                },
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  planId: plan._id,
+                }),
+              });
+
+              if (verifyResponse.ok) {
+                // Payment successful - redirect to student dashboard
+                router.push('/student');
+              } else {
+                throw new Error('Payment verification failed');
+              }
             }
           } catch (err) {
             setError('Payment verification failed. Please contact support.');
             setProcessing(false);
           }
-        },
-        prefill: {
-          name: user.name,
-          email: user.email,
-        },
-        theme: {
-          color: '#3B82F6',
         },
         modal: {
           ondismiss: function() {
