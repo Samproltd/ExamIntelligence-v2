@@ -4,6 +4,7 @@ import bcryptjs from 'bcryptjs';
 export interface IUser extends mongoose.Document {
   name: string;
   firstName?: string;
+  middleName?: string;
   lastName?: string;
   email: string;
   password: string;
@@ -15,7 +16,6 @@ export interface IUser extends mongoose.Document {
   verificationToken?: string;
   lastLoginAt?: Date;
   batch?: mongoose.Types.ObjectId;
-  rollNumber?: string;
   dateOfBirth?: Date;
   mobile?: string;
   createdAt: Date;
@@ -38,6 +38,10 @@ const UserSchema = new mongoose.Schema(
     firstName: {
       type: String,
       maxlength: [25, 'First name cannot be more than 25 characters'],
+    },
+    middleName: {
+      type: String,
+      maxlength: [25, 'Middle name cannot be more than 25 characters'],
     },
     lastName: {
       type: String,
@@ -89,11 +93,6 @@ const UserSchema = new mongoose.Schema(
     batch: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Batch',
-    },
-    rollNumber: {
-      type: String,
-      trim: true,
-      maxlength: [20, 'Roll number cannot be more than 20 characters'],
     },
     dateOfBirth: {
       type: Date,

@@ -56,11 +56,12 @@ const Register: React.FC = () => {
   
   // Step 1: Basic Information
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    middleName: '',
+    lastName: '',
     email: '',
     password: '',
     confirmPassword: '',
-    rollNumber: '',
     mobile: '',
     dateOfBirth: '',
   });
@@ -70,7 +71,6 @@ const Register: React.FC = () => {
   
   // Step 3: Subscription Selection
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
-  const [skipSubscription, setSkipSubscription] = useState(false);
   
   // Validation errors
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -79,7 +79,7 @@ const Register: React.FC = () => {
     // Check if user is already authenticated
     const token = localStorage.getItem('token');
     if (token) {
-      router.push('/student');
+        router.push('/student');
     }
   }, [router]);
   
@@ -87,35 +87,47 @@ const Register: React.FC = () => {
     const errors: Record<string, string> = {};
     
     if (step === 1) {
-      if (!formData.name.trim()) {
-        errors.name = 'Name is required';
+      if (!formData.firstName.trim()) {
+        errors.firstName = 'First name is required';
+      }
+      
+      if (!formData.lastName.trim()) {
+        errors.lastName = 'Last name is required';
+      }
+      
+      if (formData.middleName && formData.middleName.trim().length < 2) {
+        errors.middleName = 'Middle name must be at least 2 characters';
       }
       
       if (!formData.email.trim()) {
-        errors.email = 'Email is required';
+      errors.email = 'Email is required';
       } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(formData.email)) {
-        errors.email = 'Invalid email address';
-      }
-      
+      errors.email = 'Invalid email address';
+    }
+    
       if (!formData.password) {
-        errors.password = 'Password is required';
+      errors.password = 'Password is required';
       } else if (formData.password.length < 6) {
-        errors.password = 'Password must be at least 6 characters';
-      }
-      
+      errors.password = 'Password must be at least 6 characters';
+    }
+    
       if (formData.password !== formData.confirmPassword) {
-        errors.confirmPassword = 'Passwords do not match';
+      errors.confirmPassword = 'Passwords do not match';
       }
     } else if (step === 2) {
       if (!selectedCollege) {
         errors.college = 'Please select a college';
+      }
+    } else if (step === 3) {
+      if (!selectedPlan) {
+        errors.subscription = 'Please select a subscription plan';
       }
     }
     
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
-
+  
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -139,7 +151,7 @@ const Register: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    if (!validateStep(2)) return;
+    if (!validateStep(3)) return;
     
     try {
       setLoading(true);
@@ -152,12 +164,14 @@ const Register: React.FC = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: formData.name,
+          name: `${formData.firstName} ${formData.middleName ? formData.middleName + ' ' : ''}${formData.lastName}`.trim(),
+          firstName: formData.firstName,
+          middleName: formData.middleName,
+          lastName: formData.lastName,
           email: formData.email,
           password: formData.password,
           role: 'student',
           college: selectedCollege?._id,
-          rollNumber: formData.rollNumber,
           mobile: formData.mobile,
           dateOfBirth: formData.dateOfBirth,
         }),
@@ -174,7 +188,7 @@ const Register: React.FC = () => {
       localStorage.setItem('token', data.token);
       
       // If subscription is selected, redirect to payment
-      if (selectedPlan && !skipSubscription) {
+      if (selectedPlan) {
         router.push(`/student/subscription-plans/payment?planId=${selectedPlan._id}`);
       } else {
         setSuccess(true);
@@ -208,7 +222,7 @@ const Register: React.FC = () => {
       </Layout>
     );
   }
-
+  
   return (
     <Layout title="Register - ExamIntelligence">
       <div className="min-h-screen bg-gray-50 py-8">
@@ -279,55 +293,93 @@ const Register: React.FC = () => {
                 >
                   <div className="text-center mb-6">
                     <UserIcon className="mx-auto h-12 w-12 text-blue-600 mb-4" />
-                    <h2 className="text-2xl font-bold text-gray-900">Basic Information</h2>
+                    <h2 className="text-2xl font-bold text-gray-900">Personal Information</h2>
                     <p className="text-gray-600">Tell us about yourself</p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Full Name *
+                        First Name *
                       </label>
                       <input
                         type="text"
-                        name="name"
-                        value={formData.name}
+                        name="firstName"
+                        value={formData.firstName}
                         onChange={handleInputChange}
                         className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                          validationErrors.name ? 'border-red-500' : 'border-gray-300'
+                          validationErrors.firstName ? 'border-red-500' : 'border-gray-300'
                         }`}
-                        placeholder="Enter your full name"
+                        placeholder="Enter your first name"
                       />
-                      {validationErrors.name && (
-                        <p className="text-red-500 text-sm mt-1">{validationErrors.name}</p>
+                      {validationErrors.firstName && (
+                        <p className="text-red-500 text-sm mt-1">{validationErrors.firstName}</p>
                       )}
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Email Address *
+                        Middle Name
                       </label>
                       <input
-                        type="email"
+                        type="text"
+                        name="middleName"
+                        value={formData.middleName}
+                        onChange={handleInputChange}
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          validationErrors.middleName ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        placeholder="Enter your middle name (optional)"
+                      />
+                      {validationErrors.middleName && (
+                        <p className="text-red-500 text-sm mt-1">{validationErrors.middleName}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Last Name *
+                      </label>
+            <input
+              type="text"
+                        name="lastName"
+                        value={formData.lastName}
+                        onChange={handleInputChange}
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          validationErrors.lastName ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        placeholder="Enter your last name"
+                      />
+                      {validationErrors.lastName && (
+                        <p className="text-red-500 text-sm mt-1">{validationErrors.lastName}</p>
+            )}
+          </div>
+          
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Email Address *
+                      </label>
+            <input
+              type="email"
                         name="email"
                         value={formData.email}
                         onChange={handleInputChange}
                         className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                           validationErrors.email ? 'border-red-500' : 'border-gray-300'
                         }`}
-                        placeholder="Enter your email"
-                      />
-                      {validationErrors.email && (
-                        <p className="text-red-500 text-sm mt-1">{validationErrors.email}</p>
-                      )}
-                    </div>
-
+              placeholder="Enter your email"
+            />
+            {validationErrors.email && (
+              <p className="text-red-500 text-sm mt-1">{validationErrors.email}</p>
+            )}
+          </div>
+          
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Password *
                       </label>
-                      <input
-                        type="password"
+            <input
+              type="password"
                         name="password"
                         value={formData.password}
                         onChange={handleInputChange}
@@ -335,44 +387,31 @@ const Register: React.FC = () => {
                           validationErrors.password ? 'border-red-500' : 'border-gray-300'
                         }`}
                         placeholder="Create a password"
-                      />
-                      {validationErrors.password && (
-                        <p className="text-red-500 text-sm mt-1">{validationErrors.password}</p>
-                      )}
-                    </div>
-
+            />
+            {validationErrors.password && (
+              <p className="text-red-500 text-sm mt-1">{validationErrors.password}</p>
+            )}
+          </div>
+          
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Confirm Password *
                       </label>
-                      <input
-                        type="password"
+            <input
+              type="password"
                         name="confirmPassword"
                         value={formData.confirmPassword}
                         onChange={handleInputChange}
                         className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                           validationErrors.confirmPassword ? 'border-red-500' : 'border-gray-300'
                         }`}
-                        placeholder="Confirm your password"
-                      />
-                      {validationErrors.confirmPassword && (
-                        <p className="text-red-500 text-sm mt-1">{validationErrors.confirmPassword}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Roll Number
-                      </label>
-                      <input
-                        type="text"
-                        name="rollNumber"
-                        value={formData.rollNumber}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Enter your roll number"
-                      />
-                    </div>
+              placeholder="Confirm your password"
+            />
+            {validationErrors.confirmPassword && (
+              <p className="text-red-500 text-sm mt-1">{validationErrors.confirmPassword}</p>
+            )}
+          </div>
+          
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -446,33 +485,23 @@ const Register: React.FC = () => {
                   <div className="text-center mb-6">
                     <CreditCardIcon className="mx-auto h-12 w-12 text-blue-600 mb-4" />
                     <h2 className="text-2xl font-bold text-gray-900">Choose Your Plan</h2>
-                    <p className="text-gray-600">Select a subscription plan or skip for now</p>
+                    <p className="text-gray-600">Select a subscription plan to continue</p>
                   </div>
 
                   {selectedCollege && (
-                    <SubscriptionPlans
-                      collegeId={selectedCollege._id}
-                      onPlanSelect={setSelectedPlan}
-                      showComparison={true}
-                      selectedPlanId={selectedPlan?._id}
-                    />
+                    <div>
+                      <SubscriptionPlans
+                        collegeId={selectedCollege._id}
+                        onPlanSelect={setSelectedPlan}
+                        showComparison={true}
+                        selectedPlanId={selectedPlan?._id}
+                      />
+                      {validationErrors.subscription && (
+                        <p className="text-red-500 text-sm mt-2 text-center">{validationErrors.subscription}</p>
+                      )}
+                    </div>
                   )}
 
-                  <div className="flex items-center justify-center">
-                    <button
-                      type="button"
-                      onClick={() => setSkipSubscription(!skipSubscription)}
-                      className="flex items-center text-sm text-gray-600 hover:text-gray-800"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={skipSubscription}
-                        onChange={(e) => setSkipSubscription(e.target.checked)}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2"
-                      />
-                      Skip subscription for now (I'll choose later)
-                    </button>
-                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -502,7 +531,7 @@ const Register: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleSubmit}
-                  disabled={loading}
+            disabled={loading}
                   className="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? (
@@ -524,8 +553,8 @@ const Register: React.FC = () => {
               Already have an account?{' '}
               <Link href="/login" className="text-blue-600 hover:text-blue-800 font-medium">
                 Sign in here
-              </Link>
-            </p>
+            </Link>
+          </p>
           </div>
         </div>
       </div>

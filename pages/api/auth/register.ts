@@ -15,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Check if default admin needs to be created
     await initializeDefaultAdmin();
 
-    const { name, email, password, role, batch, rollNumber, college, mobile, dateOfBirth } = req.body;
+    const { name, firstName, middleName, lastName, email, password, role, batch, college, mobile, dateOfBirth } = req.body;
     // console.log(req.body);
 
     // Validate input
@@ -78,6 +78,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Prepare user data with the determined role
     const userData: any = {
       name,
+      firstName,
+      middleName,
+      lastName,
       email,
       password,
       role: userRole,
@@ -95,10 +98,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       userData.batch = batch;
     }
 
-    // Add roll number if provided for students
-    if (rollNumber && userRole === 'student') {
-      userData.rollNumber = rollNumber;
-    }
 
     // Add mobile if provided
     if (mobile) {
@@ -140,9 +139,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       responseData.user.batch = createdUser.batch;
     }
 
-    if (createdUser.rollNumber) {
-      responseData.user.rollNumber = createdUser.rollNumber;
-    }
 
     // console.log("responseData:",responseData);
 

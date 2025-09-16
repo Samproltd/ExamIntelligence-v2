@@ -115,17 +115,21 @@ const SubscriptionPayment: React.FC = () => {
       setError(null);
 
       // Create Razorpay order
+      const orderPayload = {
+        planId: plan._id,
+        amount: plan.price,
+        currency: 'INR',
+      };
+      
+      console.log('Sending payment order request:', orderPayload);
+      
       const orderResponse = await fetch('/api/payments/subscription-order', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
-        body: JSON.stringify({
-          planId: plan._id,
-          amount: plan.price,
-          currency: 'INR',
-        }),
+        body: JSON.stringify(orderPayload),
       });
 
       if (!orderResponse.ok) {
@@ -133,6 +137,10 @@ const SubscriptionPayment: React.FC = () => {
       }
 
       const orderData = await orderResponse.json();
+      
+      console.log('Order response received:', orderData);
+      console.log('Order data amount:', orderData.data?.amount);
+      console.log('Plan price:', plan.price);
 
       // Initialize Razorpay
       const razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
@@ -143,11 +151,18 @@ const SubscriptionPayment: React.FC = () => {
 
       const options = {
         key: razorpayKey,
-        amount: orderData.amount,
-        currency: orderData.currency,
+        amount: plan.price * 100, // Convert to paise for frontend
+        currency: 'INR',
         name: 'ExamIntelligence',
-        description: `${plan.name} Subscription`,
+        description: `${plan.name} Subscription - ₹${plan.price}`,
         order_id: orderData.id,
+        prefill: {
+          name: user.name,
+          email: user.email,
+        },
+        theme: {
+          color: '#3B82F6'
+        },
         handler: async function (response: any) {
           try {
             // Verify payment
@@ -189,6 +204,11 @@ const SubscriptionPayment: React.FC = () => {
           }
         }
       };
+
+      console.log('Razorpay options:', options);
+      console.log('Plan price:', plan.price);
+      console.log('Amount in paise:', plan.price * 100);
+      console.log('Order data amount:', orderData.data.amount);
 
       const razorpay = new (window as any).Razorpay(options);
       razorpay.open();
