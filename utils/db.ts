@@ -25,6 +25,7 @@ if (!cached) {
 export const preloadModels = async () => {
   // Import all models to ensure they're registered
   await import('../models/Batch');
+  await import('../models/BatchSubscriptionAssignment');
   await import('../models/College');
   await import('../models/Course');
   await import('../models/Exam');
