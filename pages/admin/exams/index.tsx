@@ -20,7 +20,22 @@ interface Exam {
     subject: {
       _id: string;
       name: string;
+      college: {
+        _id: string;
+        name: string;
+        code: string;
+      };
     };
+  };
+  college: {
+    _id: string;
+    name: string;
+    code: string;
+  };
+  createdBy: {
+    _id: string;
+    name: string;
+    email: string;
   };
   createdAt: string;
 }
@@ -31,6 +46,16 @@ interface Course {
   subject: {
     _id: string;
     name: string;
+    college: {
+      _id: string;
+      name: string;
+      code: string;
+    };
+  };
+  college: {
+    _id: string;
+    name: string;
+    code: string;
   };
 }
 
@@ -215,7 +240,7 @@ const ExamsPage: React.FC = () => {
                     <option value="">Select a course</option>
                     {courses.map(course => (
                       <option key={course._id} value={course._id}>
-                        {course.name} ({course.subject.name})
+                        {course.name} - {course.subject.name} ({course.college?.name})
                       </option>
                     ))}
                   </select>
@@ -328,18 +353,54 @@ const ExamsPage: React.FC = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {exams.map(exam => (
-                <ExamCard
-                  key={exam._id}
-                  id={exam._id}
-                  name={exam.name}
-                  description={exam.description}
-                  duration={exam.duration}
-                  totalMarks={exam.totalMarks}
-                  totalQuestions={exam.totalQuestions}
-                  questionsToDisplay={exam.questionsToDisplay}
-                  courseName={`${exam.course.name} (${exam.course.subject.name})`}
-                  isAdmin={true}
-                />
+                <div key={exam._id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+                  <div className="flex justify-between items-start mb-3">
+                    <h3 className="text-xl font-semibold text-gray-900">{exam.name}</h3>
+                    <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
+                      {exam.college?.name}
+                    </span>
+                  </div>
+                  <p className="text-gray-600 mb-4">{exam.description}</p>
+                  
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="text-sm">
+                      <span className="font-medium text-gray-700">Duration:</span>
+                      <span className="ml-1 text-gray-600">{exam.duration} min</span>
+                    </div>
+                    <div className="text-sm">
+                      <span className="font-medium text-gray-700">Total Marks:</span>
+                      <span className="ml-1 text-gray-600">{exam.totalMarks}</span>
+                    </div>
+                    <div className="text-sm">
+                      <span className="font-medium text-gray-700">Pass %:</span>
+                      <span className="ml-1 text-gray-600">{exam.passPercentage}%</span>
+                    </div>
+                    <div className="text-sm">
+                      <span className="font-medium text-gray-700">Questions:</span>
+                      <span className="ml-1 text-gray-600">{exam.questionsToDisplay}/{exam.totalQuestions}</span>
+                    </div>
+                  </div>
+
+                  <div className="text-sm text-gray-500 space-y-1 mb-4">
+                    <p><strong>Course:</strong> {exam.course?.name}</p>
+                    <p><strong>Subject:</strong> {exam.course?.subject?.name}</p>
+                    <p><strong>College:</strong> {exam.college?.name} ({exam.college?.code})</p>
+                    <p><strong>Created by:</strong> {exam.createdBy?.name}</p>
+                    <p><strong>Created:</strong> {new Date(exam.createdAt).toLocaleDateString()}</p>
+                  </div>
+
+                  <div className="flex space-x-2">
+                    <button className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">
+                      Edit
+                    </button>
+                    <button className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700">
+                      Questions
+                    </button>
+                    <button className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700">
+                      Delete
+                    </button>
+                  </div>
+                </div>
               ))}
             </div>
           )}

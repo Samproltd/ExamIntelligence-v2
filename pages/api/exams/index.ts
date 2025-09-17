@@ -71,17 +71,21 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       // For students, we need to check which exams they've already taken
       if (req.user.role === 'student') {
-        const exams = await mongooseUtils.find<any, IExam>(Exam, query, null, {
-          populate: {
+        const exams = await Exam.find(query)
+          .populate({
             path: 'course',
             select: 'name subject',
             populate: {
               path: 'subject',
-              select: 'name',
+              select: 'name college',
+              populate: {
+                path: 'college',
+                select: 'name code'
+              }
             },
-          },
-          sort: { createdAt: -1 },
-        });
+          })
+          .populate('college', 'name code')
+          .sort({ createdAt: -1 });
 
         // Find results for this student
         const results = await mongooseUtils.find<any, IResult>(Result, {
@@ -102,17 +106,22 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         });
       } else {
         // For admins, just return all exams
-        const exams = await mongooseUtils.find<any, IExam>(Exam, query, null, {
-          populate: {
+        const exams = await Exam.find(query)
+          .populate({
             path: 'course',
             select: 'name subject',
             populate: {
               path: 'subject',
-              select: 'name',
+              select: 'name college',
+              populate: {
+                path: 'college',
+                select: 'name code'
+              }
             },
-          },
-          sort: { createdAt: -1 },
-        });
+          })
+          .populate('college', 'name code')
+          .populate('createdBy', 'name email')
+          .sort({ createdAt: -1 });
 
         return res.status(200).json({
           success: true,
@@ -169,12 +178,21 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           });
         }
 
-        // Check if course exists
-        const existingCourse = await mongooseUtils.findById<any, ICourse>(Course, course);
+        // Check if course exists and get its college
+        const existingCourse = await Course.findById(course)
+          .populate({
+            path: 'subject',
+            populate: {
+              path: 'college'
+            }
+          });
 
         if (!existingCourse) {
           return res.status(404).json({ success: false, message: 'Course not found' });
         }
+
+        // Get college from the course's subject
+        const college = (existingCourse as any).subject.college._id;
 
         // Check if exam with same name already exists in this course
         const existingExam = await mongooseUtils.findOne<any, IExam>(Exam, {
@@ -189,11 +207,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           });
         }
 
-        // Create the exam
+        // Create the exam with college from course's subject
         const exam = await mongooseUtils.create<any, IExam>(Exam, {
           name,
           description,
           course,
+          college, // Add college from the course's subject
           duration,
           totalMarks,
           passPercentage: passPercentage || 40, // Default to 40% if not provided
@@ -202,17 +221,22 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           createdBy: req.user.userId,
         });
 
-        // Populate the course field for the response
-        const populatedExam = await mongooseUtils.findById<any, IExam>(Exam, (exam as IExam)._id, {
-          populate: {
+        // Populate the course and college fields for the response
+        const populatedExam = await Exam.findById((exam as IExam)._id)
+          .populate({
             path: 'course',
             select: 'name subject',
             populate: {
               path: 'subject',
-              select: 'name',
+              select: 'name college',
+              populate: {
+                path: 'college',
+                select: 'name code'
+              }
             },
-          },
-        });
+          })
+          .populate('college', 'name code')
+          .populate('createdBy', 'name email');
 
         return res.status(201).json({
           success: true,

@@ -25,11 +25,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         query = { subject };
       }
 
-      // Fetch courses with pagination and populate subject details
+      // Fetch courses with pagination and populate subject and college details
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const courses = await (Course.find as any)(query)
         .sort({ createdAt: -1 })
-        .populate("subject", "name");
+        .populate("subject", "name")
+        .populate("college", "name code")
+        .populate("createdBy", "name email");
 
       return res.status(200).json({
         success: true,
@@ -68,15 +70,18 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           .json({ success: false, message: "Invalid subject ID" });
       }
 
-      // Check if subject exists
+      // Check if subject exists and get its college
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const existingSubject = await (Subject.findById as any)(subject);
+      const existingSubject = await (Subject.findById as any)(subject).populate('college');
 
       if (!existingSubject) {
         return res
           .status(404)
           .json({ success: false, message: "Subject not found" });
       }
+
+      // Get college from the subject
+      const college = existingSubject.college._id;
 
       // Check if course already exists with the same name in the same subject
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -90,17 +95,20 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         });
       }
 
-      // Create course
+      // Create course with college from subject
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const course = await (Course.create as any)({
         name,
         description,
         subject,
+        college, // Add college from the subject
         createdBy: req.user.userId,
       });
 
-      // Populate the subject field for the response
+      // Populate the subject and college fields for the response
       await course.populate("subject", "name");
+      await course.populate("college", "name code");
+      await course.populate("createdBy", "name email");
 
       return res.status(201).json({
         success: true,

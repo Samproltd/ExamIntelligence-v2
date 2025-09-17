@@ -15,12 +15,27 @@ interface Course {
     _id: string;
     name: string;
   };
+  college: {
+    _id: string;
+    name: string;
+    code: string;
+  };
+  createdBy: {
+    _id: string;
+    name: string;
+    email: string;
+  };
   createdAt: string;
 }
 
 interface Subject {
   _id: string;
   name: string;
+  college: {
+    _id: string;
+    name: string;
+    code: string;
+  };
 }
 
 const CoursesPage: React.FC = () => {
@@ -196,7 +211,7 @@ const CoursesPage: React.FC = () => {
                     <option value="">Select a subject</option>
                     {subjects.map((subject) => (
                       <option key={subject._id} value={subject._id}>
-                        {subject.name}
+                        {subject.name} ({subject.college?.name})
                       </option>
                     ))}
                   </select>
@@ -242,14 +257,29 @@ const CoursesPage: React.FC = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {courses.map((course) => (
-                <CourseCard
-                  key={course._id}
-                  id={course._id}
-                  name={course.name}
-                  description={course.description}
-                  subjectName={course.subject.name}
-                  isAdmin={true}
-                />
+                <div key={course._id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+                  <div className="flex justify-between items-start mb-3">
+                    <h3 className="text-xl font-semibold text-gray-900">{course.name}</h3>
+                    <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                      {course.college?.name}
+                    </span>
+                  </div>
+                  <p className="text-gray-600 mb-4">{course.description}</p>
+                  <div className="text-sm text-gray-500 space-y-1">
+                    <p><strong>Subject:</strong> {course.subject?.name}</p>
+                    <p><strong>College:</strong> {course.college?.name} ({course.college?.code})</p>
+                    <p><strong>Created by:</strong> {course.createdBy?.name}</p>
+                    <p><strong>Created:</strong> {new Date(course.createdAt).toLocaleDateString()}</p>
+                  </div>
+                  <div className="mt-4 flex space-x-2">
+                    <button className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">
+                      Edit
+                    </button>
+                    <button className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700">
+                      Delete
+                    </button>
+                  </div>
+                </div>
               ))}
             </div>
           )}
