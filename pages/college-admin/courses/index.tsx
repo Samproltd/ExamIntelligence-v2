@@ -1,50 +1,59 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  ClipboardDocumentListIcon, 
+  BookOpenIcon, 
   EyeIcon,
+  MagnifyingGlassIcon,
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 import CollegeAdminLayout from '../../../components/CollegeAdminLayout';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner';
 
-interface Exam {
+interface Course {
   _id: string;
-  title: string;
+  name: string;
+  code: string;
   description: string;
   duration: number;
-  totalQuestions: number;
-  status: string;
-  startDate: string;
-  endDate: string;
+  isActive: boolean;
+  college: {
+    _id: string;
+    name: string;
+  };
+  subjects: Array<{
+    _id: string;
+    name: string;
+    code: string;
+  }>;
   createdAt: string;
 }
 
-const CollegeAdminExams: React.FC = () => {
-  const [exams, setExams] = useState<Exam[]>([]);
+const CollegeAdminCourses: React.FC = () => {
+  const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    fetchExams();
+    fetchCourses();
   }, []);
 
-  const fetchExams = async () => {
+  const fetchCourses = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/college-admin/exams', {
+      const response = await fetch('/api/college-admin/courses', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch exams');
+        throw new Error('Failed to fetch courses');
       }
 
       const data = await response.json();
-      setExams(data.data);
+      setCourses(data.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -52,24 +61,27 @@ const CollegeAdminExams: React.FC = () => {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'active':
-        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Active</span>;
-      case 'scheduled':
-        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Scheduled</span>;
-      case 'completed':
-        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Completed</span>;
-      case 'draft':
-        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Draft</span>;
-      default:
-        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">{status}</span>;
-    }
+  const filteredCourses = courses.filter(course =>
+    course.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    course.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    course.description.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const getStatusBadge = (isActive: boolean) => {
+    return isActive ? (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+        Active
+      </span>
+    ) : (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+        Inactive
+      </span>
+    );
   };
 
   if (loading) {
     return (
-      <CollegeAdminLayout title="Manage Exams">
+      <CollegeAdminLayout title="View Courses">
         <div className="flex items-center justify-center h-64">
           <LoadingSpinner size="lg" />
         </div>
@@ -78,12 +90,12 @@ const CollegeAdminExams: React.FC = () => {
   }
 
   return (
-    <CollegeAdminLayout title="Manage Exams">
+    <CollegeAdminLayout title="View Courses">
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">View Exams</h1>
-          <p className="text-gray-600">View exams assigned to your college (Read-only access)</p>
+          <h1 className="text-2xl font-bold text-gray-900">View Courses</h1>
+          <p className="text-gray-600">View courses assigned to your college (Read-only access)</p>
         </div>
 
         {/* Permission Notice */}
@@ -98,8 +110,8 @@ const CollegeAdminExams: React.FC = () => {
               </h3>
               <div className="mt-2 text-sm text-blue-700">
                 <p>
-                  As a college admin, you have view-only access to exams. Only Super Admin can create, edit, delete, or assign exams.
-                  Contact your Super Admin to request changes to exams.
+                  As a college admin, you have view-only access to courses. Only Super Admin can create, edit, or delete courses.
+                  Contact your Super Admin to request changes to courses.
                 </p>
               </div>
             </div>
@@ -117,18 +129,32 @@ const CollegeAdminExams: React.FC = () => {
           </motion.div>
         )}
 
+        {/* Search */}
+        <div className="bg-white p-4 rounded-lg shadow">
+          <div className="relative">
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search courses by name, code, or description..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white overflow-hidden shadow rounded-lg">
             <div className="p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <ClipboardDocumentListIcon className="h-6 w-6 text-blue-600" />
+                  <BookOpenIcon className="h-6 w-6 text-blue-600" />
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Total Exams</dt>
-                    <dd className="text-lg font-medium text-gray-900">{exams.length}</dd>
+                    <dt className="text-sm font-medium text-gray-500 truncate">Total Courses</dt>
+                    <dd className="text-lg font-medium text-gray-900">{courses.length}</dd>
                   </dl>
                 </div>
               </div>
@@ -140,14 +166,14 @@ const CollegeAdminExams: React.FC = () => {
               <div className="flex items-center">
                 <div className="flex-shrink-0">
                   <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
-                    <PlayIcon className="w-4 h-4 text-green-600" />
+                    <div className="w-3 h-3 bg-green-600 rounded-full"></div>
                   </div>
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Active Exams</dt>
+                    <dt className="text-sm font-medium text-gray-500 truncate">Active Courses</dt>
                     <dd className="text-lg font-medium text-gray-900">
-                      {exams.filter(e => e.status === 'active').length}
+                      {courses.filter(c => c.isActive).length}
                     </dd>
                   </dl>
                 </div>
@@ -159,35 +185,15 @@ const CollegeAdminExams: React.FC = () => {
             <div className="p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
-                    <div className="w-4 h-4 bg-blue-600 rounded-full"></div>
+                  <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center">
+                    <div className="w-3 h-3 bg-red-600 rounded-full"></div>
                   </div>
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Scheduled</dt>
+                    <dt className="text-sm font-medium text-gray-500 truncate">Inactive Courses</dt>
                     <dd className="text-lg font-medium text-gray-900">
-                      {exams.filter(e => e.status === 'scheduled').length}
-                    </dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
-                    <div className="w-4 h-4 bg-gray-600 rounded-full"></div>
-                  </div>
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Completed</dt>
-                    <dd className="text-lg font-medium text-gray-900">
-                      {exams.filter(e => e.status === 'completed').length}
+                      {courses.filter(c => !c.isActive).length}
                     </dd>
                   </dl>
                 </div>
@@ -196,37 +202,38 @@ const CollegeAdminExams: React.FC = () => {
           </div>
         </div>
 
-        {/* Exams Table */}
+        {/* Courses Table */}
         <div className="bg-white shadow overflow-hidden sm:rounded-md">
           <div className="px-4 py-5 sm:px-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">Exams List</h3>
-            <p className="mt-1 max-w-2xl text-sm text-gray-500">Manage all exams in your college</p>
+            <h3 className="text-lg leading-6 font-medium text-gray-900">Courses List</h3>
+            <p className="mt-1 max-w-2xl text-sm text-gray-500">View all courses assigned to your college</p>
           </div>
           <ul className="divide-y divide-gray-200">
-            {exams.map((exam) => (
-              <li key={exam._id}>
+            {filteredCourses.map((course) => (
+              <li key={course._id}>
                 <div className="px-4 py-4 flex items-center justify-between">
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
                       <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                        <ClipboardDocumentListIcon className="h-5 w-5 text-blue-600" />
+                        <BookOpenIcon className="h-5 w-5 text-blue-600" />
                       </div>
                     </div>
                     <div className="ml-4">
                       <div className="flex items-center">
-                        <p className="text-sm font-medium text-gray-900">{exam.title}</p>
-                        {getStatusBadge(exam.status)}
+                        <p className="text-sm font-medium text-gray-900">{course.name}</p>
+                        <span className="ml-2 text-sm text-gray-500">({course.code})</span>
+                        {getStatusBadge(course.isActive)}
                       </div>
-                      <p className="text-sm text-gray-500">{exam.description}</p>
+                      <p className="text-sm text-gray-500">{course.description}</p>
                       <div className="flex items-center mt-1 space-x-4">
                         <span className="text-xs text-gray-500">
-                          Duration: {exam.duration} minutes
+                          Duration: {course.duration} months
                         </span>
                         <span className="text-xs text-gray-500">
-                          Questions: {exam.totalQuestions}
+                          Subjects: {course.subjects?.length || 0}
                         </span>
                         <span className="text-xs text-gray-500">
-                          Created: {new Date(exam.createdAt).toLocaleDateString()}
+                          Created: {new Date(course.createdAt).toLocaleDateString()}
                         </span>
                       </div>
                     </div>
@@ -245,12 +252,12 @@ const CollegeAdminExams: React.FC = () => {
           </ul>
         </div>
 
-        {exams.length === 0 && (
+        {filteredCourses.length === 0 && (
           <div className="text-center py-12">
-            <ClipboardDocumentListIcon className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No exams found</h3>
+            <BookOpenIcon className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No courses found</h3>
             <p className="mt-1 text-sm text-gray-500">
-              No exams have been assigned to your college yet. Contact your Super Admin to assign exams.
+              {searchTerm ? 'Try adjusting your search terms.' : 'No courses have been assigned to your college yet. Contact your Super Admin to assign courses.'}
             </p>
           </div>
         )}
@@ -259,4 +266,4 @@ const CollegeAdminExams: React.FC = () => {
   );
 };
 
-export default CollegeAdminExams;
+export default CollegeAdminCourses;

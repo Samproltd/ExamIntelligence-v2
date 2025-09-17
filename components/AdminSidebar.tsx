@@ -91,7 +91,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, toggleSidebar }) =>
       ),
     },
     {
-      name: 'Subjects',
+      name: 'Manage Subjects',
       path: '/admin/subjects',
       icon: (
         <svg
@@ -105,7 +105,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, toggleSidebar }) =>
       ),
     },
     {
-      name: 'Courses',
+      name: 'Manage Courses',
       path: '/admin/courses',
       icon: (
         <svg
@@ -119,7 +119,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, toggleSidebar }) =>
       ),
     },
     {
-      name: 'Exams',
+      name: 'Manage Exams',
       path: '/admin/exams',
       icon: (
         <svg
@@ -134,6 +134,20 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, toggleSidebar }) =>
             d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
             clipRule="evenodd"
           />
+        </svg>
+      ),
+    },
+    {
+      name: 'Assign Exams',
+      path: '/admin/exam-assignments',
+      icon: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-5 w-5"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+        >
+          <path fillRule="evenodd" d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.994.89l-1 9A1 1 0 004 18h12a1 1 0 00.994-1.11l-1-9A1 1 0 0015 7h-1V6a4 4 0 00-4-4zM8 6a2 2 0 114 0v1H8V6zm.707 7.293a1 1 0 00-1.414 1.414L8.586 16l-1.293 1.293a1 1 0 101.414 1.414L10 17.414l1.293 1.293a1 1 0 001.414-1.414L11.414 16l1.293-1.293a1 1 0 00-1.414-1.414L10 14.586l-1.293-1.293z" clipRule="evenodd" />
         </svg>
       ),
     },

@@ -8,7 +8,8 @@ import {
   BuildingOfficeIcon,
   UsersIcon,
   BookOpenIcon,
-  ClipboardDocumentListIcon
+  ClipboardDocumentListIcon,
+  EyeIcon
 } from '@heroicons/react/24/outline';
 import CollegeAdminLayout from '../../components/CollegeAdminLayout';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
@@ -152,13 +153,31 @@ const CollegeAdminDashboard: React.FC = () => {
       icon: UserGroupIcon,
       href: '/college-admin/students',
       color: 'bg-blue-600 hover:bg-blue-700',
+      canManage: true,
     },
     {
-      name: 'Create Exam',
-      description: 'Create new exams for students',
+      name: 'View Subjects',
+      description: 'View subjects assigned to your college',
+      icon: AcademicCapIcon,
+      href: '/college-admin/subjects',
+      color: 'bg-pink-600 hover:bg-pink-700',
+      canManage: false,
+    },
+    {
+      name: 'View Courses',
+      description: 'View courses assigned to your college',
+      icon: BookOpenIcon,
+      href: '/college-admin/courses',
+      color: 'bg-indigo-600 hover:bg-indigo-700',
+      canManage: false,
+    },
+    {
+      name: 'View Exams',
+      description: 'View exams assigned to your college',
       icon: ClipboardDocumentListIcon,
-      href: '/college-admin/exams/create',
+      href: '/college-admin/exams',
       color: 'bg-green-600 hover:bg-green-700',
+      canManage: false,
     },
     {
       name: 'View Results',
@@ -166,27 +185,15 @@ const CollegeAdminDashboard: React.FC = () => {
       icon: ChartBarIcon,
       href: '/college-admin/results',
       color: 'bg-purple-600 hover:bg-purple-700',
+      canManage: false,
     },
     {
-      name: 'Manage Courses',
-      description: 'Create and manage courses',
-      icon: BookOpenIcon,
-      href: '/college-admin/courses',
-      color: 'bg-indigo-600 hover:bg-indigo-700',
-    },
-    {
-      name: 'Manage Subjects',
-      description: 'Create and manage subjects',
-      icon: AcademicCapIcon,
-      href: '/college-admin/subjects',
-      color: 'bg-pink-600 hover:bg-pink-700',
-    },
-    {
-      name: 'Manage Batches',
-      description: 'Create and manage student batches',
+      name: 'View Batches',
+      description: 'View student batches information',
       icon: UsersIcon,
       href: '/college-admin/batches',
       color: 'bg-orange-600 hover:bg-orange-700',
+      canManage: false,
     },
   ];
 
@@ -201,6 +208,26 @@ const CollegeAdminDashboard: React.FC = () => {
               Welcome to {college.name} ({college.code}) administration panel
             </p>
           )}
+        </div>
+
+        {/* Permission Notice */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <BuildingOfficeIcon className="h-5 w-5 text-blue-400" />
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-blue-800">
+                College Admin Access Level
+              </h3>
+              <div className="mt-2 text-sm text-blue-700">
+                <p>
+                  You can <strong>manage students</strong> and <strong>view</strong> subjects, courses, exams, and results assigned to your college. 
+                  Only Super Admin can create, edit, or delete subjects, courses, and exams.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* College Info Card */}
@@ -293,9 +320,23 @@ const CollegeAdminDashboard: React.FC = () => {
                   <div className="mt-4">
                     <button
                       onClick={() => router.push(action.href)}
-                      className={`w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white ${action.color} transition-colors`}
+                      className={`w-full inline-flex justify-center items-center px-4 py-2 border text-sm font-medium rounded-md transition-colors ${
+                        action.canManage 
+                          ? `border-transparent text-white ${action.color}`
+                          : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
+                      }`}
                     >
-                      Go to {action.name}
+                      {action.canManage ? (
+                        <>
+                          <UserGroupIcon className="h-4 w-4 mr-2" />
+                          {action.name}
+                        </>
+                      ) : (
+                        <>
+                          <EyeIcon className="h-4 w-4 mr-2" />
+                          {action.name}
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
@@ -307,19 +348,23 @@ const CollegeAdminDashboard: React.FC = () => {
         {/* Recent Activity */}
         <div className="bg-white shadow rounded-lg">
           <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Activity</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">System Status</h3>
             <div className="space-y-3">
               <div className="flex items-center text-sm text-gray-500">
                 <div className="w-2 h-2 bg-green-400 rounded-full mr-3"></div>
-                System initialized successfully
+                College Admin dashboard initialized successfully
               </div>
               <div className="flex items-center text-sm text-gray-500">
                 <div className="w-2 h-2 bg-blue-400 rounded-full mr-3"></div>
-                Dashboard loaded with {stats?.totalStudents || 0} students
+                Access to {stats?.totalStudents || 0} student records (Management Access)
+              </div>
+              <div className="flex items-center text-sm text-gray-500">
+                <div className="w-2 h-2 bg-yellow-400 rounded-full mr-3"></div>
+                View access to {stats?.totalSubjects || 0} subjects and {stats?.totalCourses || 0} courses
               </div>
               <div className="flex items-center text-sm text-gray-500">
                 <div className="w-2 h-2 bg-purple-400 rounded-full mr-3"></div>
-                Ready to manage {stats?.totalExams || 0} exams
+                View access to {stats?.totalExams || 0} exams (Contact Super Admin for changes)
               </div>
             </div>
           </div>

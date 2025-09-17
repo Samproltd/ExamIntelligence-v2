@@ -5,7 +5,7 @@ import {
   EyeIcon,
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
-import CollegeAdminLayout from '../../../components/CollegeAdminLayout';
+import CollegeStaffLayout from '../../../components/CollegeStaffLayout';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner';
 
 interface Exam {
@@ -20,7 +20,7 @@ interface Exam {
   createdAt: string;
 }
 
-const CollegeAdminExams: React.FC = () => {
+const CollegeStaffExams: React.FC = () => {
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +33,7 @@ const CollegeAdminExams: React.FC = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/college-admin/exams', {
+      const response = await fetch('/api/college-staff/exams', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -69,16 +69,16 @@ const CollegeAdminExams: React.FC = () => {
 
   if (loading) {
     return (
-      <CollegeAdminLayout title="Manage Exams">
+      <CollegeStaffLayout title="View Exams">
         <div className="flex items-center justify-center h-64">
           <LoadingSpinner size="lg" />
         </div>
-      </CollegeAdminLayout>
+      </CollegeStaffLayout>
     );
   }
 
   return (
-    <CollegeAdminLayout title="Manage Exams">
+    <CollegeStaffLayout title="View Exams">
       <div className="space-y-6">
         {/* Header */}
         <div>
@@ -87,19 +87,19 @@ const CollegeAdminExams: React.FC = () => {
         </div>
 
         {/* Permission Notice */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <div className="flex">
             <div className="flex-shrink-0">
-              <ExclamationTriangleIcon className="h-5 w-5 text-blue-400" />
+              <ExclamationTriangleIcon className="h-5 w-5 text-yellow-400" />
             </div>
             <div className="ml-3">
-              <h3 className="text-sm font-medium text-blue-800">
+              <h3 className="text-sm font-medium text-yellow-800">
                 View-Only Access
               </h3>
-              <div className="mt-2 text-sm text-blue-700">
+              <div className="mt-2 text-sm text-yellow-700">
                 <p>
-                  As a college admin, you have view-only access to exams. Only Super Admin can create, edit, delete, or assign exams.
-                  Contact your Super Admin to request changes to exams.
+                  As college staff, you have view-only access to exams. Only Super Admin can create, edit, delete, or assign exams.
+                  Contact your College Admin or Super Admin for any exam-related requests.
                 </p>
               </div>
             </div>
@@ -123,7 +123,7 @@ const CollegeAdminExams: React.FC = () => {
             <div className="p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <ClipboardDocumentListIcon className="h-6 w-6 text-blue-600" />
+                  <ClipboardDocumentListIcon className="h-6 w-6 text-green-600" />
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>
@@ -140,7 +140,7 @@ const CollegeAdminExams: React.FC = () => {
               <div className="flex items-center">
                 <div className="flex-shrink-0">
                   <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
-                    <PlayIcon className="w-4 h-4 text-green-600" />
+                    <div className="w-4 h-4 bg-green-600 rounded-full"></div>
                   </div>
                 </div>
                 <div className="ml-5 w-0 flex-1">
@@ -200,7 +200,7 @@ const CollegeAdminExams: React.FC = () => {
         <div className="bg-white shadow overflow-hidden sm:rounded-md">
           <div className="px-4 py-5 sm:px-6">
             <h3 className="text-lg leading-6 font-medium text-gray-900">Exams List</h3>
-            <p className="mt-1 max-w-2xl text-sm text-gray-500">Manage all exams in your college</p>
+            <p className="mt-1 max-w-2xl text-sm text-gray-500">View all exams in your college</p>
           </div>
           <ul className="divide-y divide-gray-200">
             {exams.map((exam) => (
@@ -208,8 +208,8 @@ const CollegeAdminExams: React.FC = () => {
                 <div className="px-4 py-4 flex items-center justify-between">
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
-                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                        <ClipboardDocumentListIcon className="h-5 w-5 text-blue-600" />
+                      <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                        <ClipboardDocumentListIcon className="h-5 w-5 text-green-600" />
                       </div>
                     </div>
                     <div className="ml-4">
@@ -233,7 +233,7 @@ const CollegeAdminExams: React.FC = () => {
                   </div>
                   <div className="flex items-center space-x-2">
                     <button 
-                      className="text-blue-400 hover:text-blue-600"
+                      className="text-green-400 hover:text-green-600"
                       title="View Details (Read-only)"
                     >
                       <EyeIcon className="h-4 w-4" />
@@ -250,13 +250,13 @@ const CollegeAdminExams: React.FC = () => {
             <ClipboardDocumentListIcon className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No exams found</h3>
             <p className="mt-1 text-sm text-gray-500">
-              No exams have been assigned to your college yet. Contact your Super Admin to assign exams.
+              No exams have been assigned to your college yet. Contact your College Admin or Super Admin.
             </p>
           </div>
         )}
       </div>
-    </CollegeAdminLayout>
+    </CollegeStaffLayout>
   );
 };
 
-export default CollegeAdminExams;
+export default CollegeStaffExams;
