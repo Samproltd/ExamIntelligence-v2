@@ -7,6 +7,7 @@ import Layout from '../components/Layout';
 import Button from '../components/Button';
 import { RootState, AppDispatch } from '../store';
 import { KeyIcon } from '@heroicons/react/24/outline';
+import { getDashboardPath } from '../utils/roleRedirects';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -25,12 +26,9 @@ const Login: React.FC = () => {
     dispatch(clearError());
 
     // Redirect if already authenticated
-    if (isAuthenticated) {
-      if (user?.role === 'admin') {
-        router.push('/admin');
-      } else {
-        router.push('/student');
-      }
+    if (isAuthenticated && user?.role) {
+      const dashboardPath = getDashboardPath(user.role);
+      router.push(dashboardPath);
     }
   }, [isAuthenticated, dispatch, router, user]);
 
