@@ -8,8 +8,6 @@ import {
   TrashIcon,
   EyeIcon,
   BuildingOfficeIcon,
-  UsersIcon,
-  CheckCircleIcon,
   XCircleIcon
 } from '@heroicons/react/24/outline';
 import Layout from '../../../components/Layout';

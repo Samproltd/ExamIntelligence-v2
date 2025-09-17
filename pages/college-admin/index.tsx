@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { 
   UserGroupIcon, 
   AcademicCapIcon, 
-  DocumentTextIcon, 
   ChartBarIcon,
   BuildingOfficeIcon,
   UsersIcon,
@@ -47,9 +46,9 @@ const CollegeAdminDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+  }, [fetchDashboardData]);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = React.useCallback(async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
@@ -78,7 +77,7 @@ const CollegeAdminDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
 
 
   if (loading) {

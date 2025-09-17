@@ -8,7 +8,6 @@ import {
   TrashIcon,
   EyeIcon,
   CurrencyDollarIcon,
-  CalendarIcon,
   CheckCircleIcon,
   XCircleIcon
 } from '@heroicons/react/24/outline';

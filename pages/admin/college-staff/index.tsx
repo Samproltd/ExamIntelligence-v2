@@ -12,7 +12,7 @@ import {
 } from '@heroicons/react/24/outline';
 import AdminLayout from '../../../components/AdminLayout';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner';
-import { useRouter } from 'next/router';
+// import { useRouter } from 'next/router'; // Removed unused import
 
 interface CollegeStaff {
   _id: string;
@@ -38,7 +38,7 @@ interface College {
 }
 
 const CollegeStaffManagement: React.FC = () => {
-  const router = useRouter();
+  // const router = useRouter(); // Removed unused variable
   const [staff, setStaff] = useState<CollegeStaff[]>([]);
   const [colleges, setColleges] = useState<College[]>([]);
   const [loading, setLoading] = useState(true);
