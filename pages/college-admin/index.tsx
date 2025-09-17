@@ -44,10 +44,6 @@ const CollegeAdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, [fetchDashboardData]);
-
   const fetchDashboardData = React.useCallback(async () => {
     try {
       setLoading(true);
@@ -78,6 +74,10 @@ const CollegeAdminDashboard: React.FC = () => {
       setLoading(false);
     }
   }, [router]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
 
   if (loading) {
