@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { authenticateAPI, requireAdmin } from '../../../utils/auth';
 import dbConnect, { preloadModels } from '../../../utils/db';
 import Batch from '../../../models/Batch';
+import Subject from '../../../models/Subject';
 import * as mongooseUtils from '../../../utils/mongooseUtils';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -40,6 +41,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         .sort(sort as string)
         .skip(skip)
         .limit(limitNum)
+        .populate('subject', 'name')
+        .populate('college', 'name code')
         .populate('createdBy', 'name email');
 
       return res.status(200).json({
@@ -62,6 +65,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         name,
         description,
         year,
+        subject,
+        department,
+        semester,
         isActive,
         maxAttempts,
         maxSecurityIncidents,
@@ -72,12 +78,23 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       console.log('req.body--->', req.body);
 
       // Validate required fields
-      if (!name || !description || !year) {
+      if (!name || !description || !year || !subject) {
         return res.status(400).json({
           success: false,
-          message: 'Please provide name, description, and year',
+          message: 'Please provide name, description, year, and subject',
         });
       }
+
+      // Get college from subject
+      const existingSubject = await Subject.findById(subject).populate('college');
+      if (!existingSubject) {
+        return res.status(404).json({
+          success: false,
+          message: 'Subject not found',
+        });
+      }
+
+      const college = existingSubject.college._id;
 
       // Ensure numeric values are explicitly set with defaults
       const validatedMaxAttempts = maxAttempts !== undefined ? parseInt(maxAttempts) : 3;
@@ -103,6 +120,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         name,
         description,
         year,
+        subject,
+        college, // Inherited from subject
+        department: department || undefined,
+        semester: semester ? parseInt(semester) : undefined,
         isActive: isActive !== undefined ? isActive : true,
         maxAttempts: validatedMaxAttempts,
         maxSecurityIncidents: validatedMaxSecurityIncidents,
@@ -112,9 +133,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         createdBy: req.user?.userId,
       });
 
+      // Populate the created batch with subject, college and creator info
+      const populatedBatch = await Batch.findById(batch._id)
+        .populate('subject', 'name')
+        .populate('college', 'name code')
+        .populate('createdBy', 'name email');
+
       return res.status(201).json({
         success: true,
-        batch,
+        batch: populatedBatch,
       });
     } catch (error: any) {
       console.error('Error creating batch:', error);

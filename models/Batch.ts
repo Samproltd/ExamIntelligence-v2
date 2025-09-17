@@ -4,7 +4,8 @@ export interface IBatch extends mongoose.Document {
   name: string;
   description: string;
   year: number;
-  college: mongoose.Types.ObjectId; // Required
+  subject: mongoose.Types.ObjectId; // Required - subject reference
+  college: mongoose.Types.ObjectId; // Required - inherited from subject
   department?: string;
   semester?: number;
   isActive: boolean;
@@ -37,6 +38,11 @@ const BatchSchema = new mongoose.Schema(
       required: [true, 'Batch year is required'],
       min: [2000, 'Batch year must be at least 2000'],
       max: [2100, 'Batch year must be less than 2100'],
+    },
+    subject: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Subject',
+      required: [true, 'Subject is required'],
     },
     college: {
       type: mongoose.Schema.Types.ObjectId,

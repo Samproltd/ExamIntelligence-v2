@@ -12,6 +12,17 @@ interface Batch {
   name: string;
   description: string;
   year: number;
+  subject: {
+    _id: string;
+    name: string;
+  };
+  college: {
+    _id: string;
+    name: string;
+    code: string;
+  };
+  department?: string;
+  semester?: number;
   isActive: boolean;
   studentsCount?: number;
   createdAt: string;
@@ -20,10 +31,26 @@ interface Batch {
   enableAutoSuspend?: boolean;
   additionalSecurityIncidentsAfterRemoval?: number;
   additionalAttemptsAfterPayment?: number;
+  createdBy?: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+}
+
+interface Subject {
+  _id: string;
+  name: string;
+  college: {
+    _id: string;
+    name: string;
+    code: string;
+  };
 }
 
 const BatchesPage = () => {
   const [batches, setBatches] = useState<Batch[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -36,6 +63,9 @@ const BatchesPage = () => {
     name: '',
     description: '',
     year: new Date().getFullYear(),
+    subject: '', // Select subject instead of college directly
+    department: '',
+    semester: '',
     isActive: true,
     maxAttempts: 3,
     maxSecurityIncidents: 5,
@@ -45,6 +75,20 @@ const BatchesPage = () => {
   });
 
   const { token } = useSelector((state: RootState) => state.auth);
+
+  // Fetch subjects
+  const fetchSubjects = async () => {
+    try {
+      const response = await axios.get('/api/subjects', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setSubjects(response.data.subjects || []);
+    } catch (error) {
+      console.error('Error fetching subjects:', error);
+    }
+  };
 
   // Fetch batches
   const fetchBatches = async () => {
@@ -94,6 +138,9 @@ const BatchesPage = () => {
         name: '',
         description: '',
         year: new Date().getFullYear(),
+        subject: '',
+        department: '',
+        semester: '',
         isActive: true,
         maxAttempts: 3,
         maxSecurityIncidents: 5,
@@ -171,6 +218,7 @@ const BatchesPage = () => {
   useEffect(() => {
     if (token) {
       fetchBatches();
+      fetchSubjects();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, search, token]);
@@ -361,6 +409,47 @@ const BatchesPage = () => {
                       max="2100"
                       required
                     />
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Subject</label>
+                    <select
+                      className="w-full px-3 py-2 border rounded"
+                      value={newBatch.subject}
+                      onChange={e => setNewBatch({ ...newBatch, subject: e.target.value })}
+                      required
+                    >
+                      <option value="">Select a subject</option>
+                      {subjects.map((subject) => (
+                        <option key={subject._id} value={subject._id}>
+                          {subject.name} ({subject.college?.name})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Department (Optional)</label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border rounded"
+                      value={newBatch.department}
+                      onChange={e => setNewBatch({ ...newBatch, department: e.target.value })}
+                      placeholder="e.g., Computer Science"
+                    />
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Semester (Optional)</label>
+                    <select
+                      className="w-full px-3 py-2 border rounded"
+                      value={newBatch.semester}
+                      onChange={e => setNewBatch({ ...newBatch, semester: e.target.value })}
+                    >
+                      <option value="">Select semester</option>
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((sem) => (
+                        <option key={sem} value={sem}>
+                          Semester {sem}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div className="mb-4">
                     <label className="block text-gray-700 text-sm font-bold mb-2">
