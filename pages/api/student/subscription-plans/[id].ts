@@ -1,10 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import dbConnect from '../../../../utils/db';
+import dbConnect, { preloadModels } from '../../../../utils/db';
 import SubscriptionPlan from '../../../../models/SubscriptionPlan';
 import { verifyToken } from '../../../../utils/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await dbConnect();
+  await preloadModels();
 
   const authHeader = req.headers.authorization;
   let decoded: any = null;
@@ -54,7 +55,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 async function getSubscriptionPlan(req: NextApiRequest, res: NextApiResponse, planId: string, decoded: any) {
   try {
     const plan = await SubscriptionPlan.findById(planId)
-      .populate('college', 'name code')
+      .populate('colleges', 'name code')
       .populate('createdBy', 'name email');
 
     if (!plan) {
@@ -67,8 +68,10 @@ async function getSubscriptionPlan(req: NextApiRequest, res: NextApiResponse, pl
 
     // For authenticated requests, check if user can access this plan
     if (decoded && decoded.role === 'student') {
-      // Students can only view plans for their college
-      if (plan.college._id.toString() !== decoded.college) {
+      // Students can only view plans available for their college
+      const userCollege = decoded.college;
+      const planColleges = plan.colleges.map((college: any) => college._id.toString());
+      if (!planColleges.includes(userCollege)) {
         return res.status(403).json({ success: false, message: 'Access denied' });
       }
     }

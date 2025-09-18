@@ -39,7 +39,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    console.log('Payment order request:', { planId, amount, currency });
 
     if (!planId || !amount) {
       return res.status(400).json({
@@ -58,7 +57,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ success: false, message: 'Subscription plan is not active' });
     }
 
-    console.log('Plan details:', { name: plan.name, price: plan.price, receivedAmount: amount });
 
     // Verify amount matches plan price
     if (amount !== plan.price) {
@@ -97,12 +95,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       orderOptions.notes.college = decoded!.college;
     }
 
-    console.log('Razorpay order options:', orderOptions);
 
     const order = await razorpay.orders.create(orderOptions);
     
-    console.log('Razorpay order created:', { id: order.id, amount: order.amount, currency: order.currency });
-    console.log('Order amount in rupees:', Number(order.amount) / 100);
 
     return res.status(200).json({
       success: true,

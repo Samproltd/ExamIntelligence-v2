@@ -1,10 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import dbConnect from '../../../../utils/db';
+import dbConnect, { preloadModels } from '../../../../utils/db';
 import SubscriptionPlan from '../../../../models/SubscriptionPlan';
 import { verifyToken } from '../../../../utils/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await dbConnect();
+  await preloadModels();
 
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -50,14 +51,14 @@ async function getSubscriptionPlan(req: NextApiRequest, res: NextApiResponse, id
   try {
     const plan = await SubscriptionPlan.findById(id)
       .populate('createdBy', 'name email')
-      .populate('college', 'name code');
+      .populate('colleges', 'name code');
 
     if (!plan) {
       return res.status(404).json({ success: false, message: 'Subscription plan not found' });
     }
 
-    // College admins can only access their college's plans
-    if (decoded.role === 'college_admin' && plan.college?.toString() !== decoded.college) {
+    // College admins can only access plans available for their college
+    if (decoded.role === 'college_admin' && !plan.colleges?.includes(decoded.college)) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
@@ -78,8 +79,8 @@ async function updateSubscriptionPlan(req: NextApiRequest, res: NextApiResponse,
       return res.status(404).json({ success: false, message: 'Subscription plan not found' });
     }
 
-    // College admins can only update their college's plans
-    if (decoded.role === 'college_admin' && plan.college?.toString() !== decoded.college) {
+    // College admins can only update plans available for their college
+    if (decoded.role === 'college_admin' && !plan.colleges?.includes(decoded.college)) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
@@ -91,6 +92,7 @@ async function updateSubscriptionPlan(req: NextApiRequest, res: NextApiResponse,
       features,
       isActive,
       isDefault,
+      colleges,
     } = req.body;
 
     // Validate duration and price if provided
@@ -108,10 +110,11 @@ async function updateSubscriptionPlan(req: NextApiRequest, res: NextApiResponse,
       });
     }
 
-    // If setting as default, unset other default plans for the same college
+    // If setting as default, unset other default plans for the same colleges
     if (isDefault && !plan.isDefault) {
+      const targetColleges = colleges || plan.colleges;
       await SubscriptionPlan.updateMany(
-        { college: plan.college, isDefault: true },
+        { colleges: { $in: targetColleges }, isDefault: true },
         { isDefault: false }
       );
     }
@@ -124,6 +127,7 @@ async function updateSubscriptionPlan(req: NextApiRequest, res: NextApiResponse,
     if (features) plan.features = features;
     if (isActive !== undefined) plan.isActive = isActive;
     if (isDefault !== undefined) plan.isDefault = isDefault;
+    if (colleges) plan.colleges = colleges;
 
     await plan.save();
 
@@ -145,8 +149,8 @@ async function deleteSubscriptionPlan(req: NextApiRequest, res: NextApiResponse,
       return res.status(404).json({ success: false, message: 'Subscription plan not found' });
     }
 
-    // College admins can only delete their college's plans
-    if (decoded.role === 'college_admin' && plan.college?.toString() !== decoded.college) {
+    // College admins can only delete plans available for their college
+    if (decoded.role === 'college_admin' && !plan.colleges?.includes(decoded.college)) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 

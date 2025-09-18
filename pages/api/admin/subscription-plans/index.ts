@@ -1,10 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import dbConnect from '../../../../utils/db';
+import dbConnect, { preloadModels } from '../../../../utils/db';
 import SubscriptionPlan from '../../../../models/SubscriptionPlan';
 import { verifyToken } from '../../../../utils/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await dbConnect();
+  await preloadModels();
 
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -33,7 +34,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(405).json({ success: false, message: 'Method not allowed' });
     }
   } catch (error) {
-    console.error('Subscription plans API error:', error);
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 }
@@ -45,10 +45,11 @@ async function getSubscriptionPlans(req: NextApiRequest, res: NextApiResponse, d
 
     const query: any = {};
 
-    // College admins can only see their college's plans
+    // College admins can only see plans available for their college
     if (decoded.role === 'college_admin') {
-      query.college = decoded.college;
+      query.colleges = { $in: [decoded.college] };
     }
+
 
     if (search) {
       query.$or = [
@@ -63,7 +64,7 @@ async function getSubscriptionPlans(req: NextApiRequest, res: NextApiResponse, d
 
     const plans = await SubscriptionPlan.find(query)
       .populate('createdBy', 'name email')
-      .populate('college', 'name code')
+      .populate('colleges', 'name code')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(Number(limit));
@@ -81,8 +82,10 @@ async function getSubscriptionPlans(req: NextApiRequest, res: NextApiResponse, d
       },
     });
   } catch (error) {
-    console.error('Get subscription plans error:', error);
-    return res.status(500).json({ success: false, message: 'Failed to fetch subscription plans' });
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch subscription plans'
+    });
   }
 }
 
@@ -96,7 +99,7 @@ async function createSubscriptionPlan(req: NextApiRequest, res: NextApiResponse,
       features,
       isActive = true,
       isDefault = false,
-      college,
+      colleges = [],
     } = req.body;
 
     // Validate required fields
@@ -123,12 +126,20 @@ async function createSubscriptionPlan(req: NextApiRequest, res: NextApiResponse,
     }
 
     // College admins can only create plans for their college
-    const planCollege = decoded.role === 'college_admin' ? decoded.college : college;
+    const planColleges = decoded.role === 'college_admin' ? [decoded.college] : colleges;
 
-    // If setting as default, unset other default plans for the same college
+    // Validate that at least one college is selected
+    if (!planColleges || planColleges.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please select at least one college',
+      });
+    }
+
+    // If setting as default, unset other default plans for the same colleges
     if (isDefault) {
       await SubscriptionPlan.updateMany(
-        { college: planCollege, isDefault: true },
+        { colleges: { $in: planColleges }, isDefault: true },
         { isDefault: false }
       );
     }
@@ -141,7 +152,7 @@ async function createSubscriptionPlan(req: NextApiRequest, res: NextApiResponse,
       features: features || [],
       isActive,
       isDefault,
-      college: planCollege,
+      colleges: planColleges,
       createdBy: decoded.userId,
     });
 
@@ -153,7 +164,6 @@ async function createSubscriptionPlan(req: NextApiRequest, res: NextApiResponse,
       data: plan,
     });
   } catch (error) {
-    console.error('Create subscription plan error:', error);
     return res.status(500).json({ success: false, message: 'Failed to create subscription plan' });
   }
 }

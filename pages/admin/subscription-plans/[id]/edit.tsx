@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/router';
 import { 
-  PlusIcon, 
+  PencilIcon, 
   XMarkIcon,
   CheckIcon,
   BuildingOfficeIcon,
@@ -10,8 +10,8 @@ import {
   CalendarIcon,
   TagIcon
 } from '@heroicons/react/24/outline';
-import AdminLayout from '../../../components/AdminLayout';
-import LoadingSpinner from '../../../components/ui/LoadingSpinner';
+import AdminLayout from '../../../../components/AdminLayout';
+import LoadingSpinner from '../../../../components/ui/LoadingSpinner';
 
 interface College {
   _id: string;
@@ -22,9 +22,34 @@ interface College {
   isActive: boolean;
 }
 
-const CreateSubscriptionPlan: React.FC = () => {
+interface SubscriptionPlan {
+  _id: string;
+  name: string;
+  description: string;
+  duration: number;
+  price: number;
+  features: string[];
+  isActive: boolean;
+  isDefault: boolean;
+  colleges: {
+    _id: string;
+    name: string;
+    code: string;
+  }[];
+  createdBy: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+const EditSubscriptionPlan: React.FC = () => {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const { id } = router.query;
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [colleges, setColleges] = useState<College[]>([]);
   const [selectedColleges, setSelectedColleges] = useState<string[]>([]);
@@ -41,8 +66,43 @@ const CreateSubscriptionPlan: React.FC = () => {
   });
 
   useEffect(() => {
-    fetchColleges();
-  }, []);
+    if (id) {
+      fetchPlanDetails();
+      fetchColleges();
+    }
+  }, [id]);
+
+  const fetchPlanDetails = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/admin/subscription-plans/${id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const plan: SubscriptionPlan = data.data;
+        
+        setFormData({
+          name: plan.name,
+          description: plan.description,
+          duration: plan.duration,
+          price: plan.price,
+          features: plan.features.length > 0 ? plan.features : [''],
+          isActive: plan.isActive,
+          isDefault: plan.isDefault,
+        });
+        
+        setSelectedColleges(plan.colleges.map(c => c._id));
+      } else {
+        setError('Failed to fetch plan details');
+      }
+    } catch (error) {
+      setError('Failed to fetch plan details');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchColleges = async () => {
     try {
@@ -114,12 +174,12 @@ const CreateSubscriptionPlan: React.FC = () => {
     }
 
     try {
-      setLoading(true);
+      setSaving(true);
       setError(null);
 
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/admin/subscription-plans', {
-        method: 'POST',
+      const response = await fetch(`/api/admin/subscription-plans/${id}`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -135,26 +195,36 @@ const CreateSubscriptionPlan: React.FC = () => {
         router.push('/admin/subscription-plans');
       } else {
         const errorData = await response.json();
-        setError(errorData.message || 'Failed to create subscription plan');
+        setError(errorData.message || 'Failed to update subscription plan');
       }
     } catch (err) {
-      setError('Failed to create subscription plan');
+      setError('Failed to update subscription plan');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
+  if (loading) {
+    return (
+      <AdminLayout title="Edit Subscription Plan">
+        <div className="min-h-screen flex items-center justify-center">
+          <LoadingSpinner size="lg" />
+        </div>
+      </AdminLayout>
+    );
+  }
+
   return (
-    <AdminLayout title="Create Subscription Plan">
+    <AdminLayout title="Edit Subscription Plan">
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Create Subscription Plan</h1>
+                <h1 className="text-3xl font-bold text-gray-900">Edit Subscription Plan</h1>
                 <p className="text-gray-600 mt-2">
-                  Create a new subscription plan for multiple colleges
+                  Update subscription plan details and college assignments
                 </p>
               </div>
               <button
@@ -366,7 +436,7 @@ const CreateSubscriptionPlan: React.FC = () => {
                     onClick={addFeature}
                     className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                   >
-                    <PlusIcon className="h-4 w-4 mr-2" />
+                    <PencilIcon className="h-4 w-4 mr-2" />
                     Add Feature
                   </button>
                 </div>
@@ -384,16 +454,16 @@ const CreateSubscriptionPlan: React.FC = () => {
               </button>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={saving}
                 className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {loading ? (
+                {saving ? (
                   <div className="flex items-center">
                     <LoadingSpinner size="sm" color="white" />
-                    <span className="ml-2">Creating...</span>
+                    <span className="ml-2">Updating...</span>
                   </div>
                 ) : (
-                  'Create Plan'
+                  'Update Plan'
                 )}
               </button>
             </div>
@@ -404,4 +474,4 @@ const CreateSubscriptionPlan: React.FC = () => {
   );
 };
 
-export default CreateSubscriptionPlan;
+export default EditSubscriptionPlan;

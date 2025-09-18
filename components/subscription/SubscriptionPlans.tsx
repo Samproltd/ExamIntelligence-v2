@@ -13,11 +13,11 @@ interface SubscriptionPlan {
   features: string[];
   isActive: boolean;
   isDefault: boolean;
-  college: {
+  colleges: {
     _id: string;
     name: string;
     code: string;
-  };
+  }[];
 }
 
 interface SubscriptionPlansProps {

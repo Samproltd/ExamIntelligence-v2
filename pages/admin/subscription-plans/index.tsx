@@ -28,11 +28,11 @@ interface SubscriptionPlan {
     name: string;
     email: string;
   };
-  college?: {
+  colleges?: {
     _id: string;
     name: string;
     code: string;
-  };
+  }[];
   createdAt: string;
   updatedAt: string;
 }
@@ -312,12 +312,37 @@ const AdminSubscriptionPlans: React.FC = () => {
                           </span>
                         </div>
                         <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600">Colleges</span>
+                          <span className="text-sm font-medium text-gray-900">
+                            {plan.colleges?.length || 0} college{(plan.colleges?.length || 0) !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
                           <span className="text-sm text-gray-600">Created</span>
                           <span className="text-sm font-medium text-gray-900">
                             {formatDate(plan.createdAt)}
                           </span>
                         </div>
                       </div>
+
+                      {/* Colleges Preview */}
+                      {plan.colleges && plan.colleges.length > 0 && (
+                        <div className="mt-4">
+                          <h4 className="text-sm font-medium text-gray-900 mb-2">Available Colleges</h4>
+                          <div className="flex flex-wrap gap-1">
+                            {plan.colleges.slice(0, 3).map((college, idx) => (
+                              <span key={idx} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                {college.name}
+                              </span>
+                            ))}
+                            {plan.colleges.length > 3 && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                +{plan.colleges.length - 3} more
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
 
                       {/* Features Preview */}
                       <div className="mt-4">

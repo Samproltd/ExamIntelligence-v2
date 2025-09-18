@@ -12,11 +12,11 @@ interface SubscriptionPlan {
   features: string[];
   isActive: boolean;
   isDefault: boolean;
-  college: {
+  colleges: {
     _id: string;
     name: string;
     code: string;
-  };
+  }[];
 }
 
 interface PlanCardProps {
@@ -134,7 +134,15 @@ const PlanCard: React.FC<PlanCardProps> = ({
         {/* College Info */}
         <div className="mt-4 pt-4 border-t border-gray-200">
           <div className="text-xs text-gray-500 text-center">
-            For {plan.college.name} ({plan.college.code})
+            {plan.colleges && plan.colleges.length > 0 ? (
+              plan.colleges.length === 1 ? (
+                `For ${plan.colleges[0].name} (${plan.colleges[0].code})`
+              ) : (
+                `Available for ${plan.colleges.length} colleges`
+              )
+            ) : (
+              'Available for multiple colleges'
+            )}
           </div>
         </div>
       </div>

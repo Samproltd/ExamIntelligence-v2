@@ -19,11 +19,11 @@ interface SubscriptionPlan {
   duration: number;
   price: number;
   features: string[];
-  college: {
+  colleges: {
     _id: string;
     name: string;
     code: string;
-  };
+  }[];
 }
 
 const SubscriptionPayment: React.FC = () => {
@@ -156,7 +156,6 @@ const SubscriptionPayment: React.FC = () => {
         isRegistration: isRegistration,
       };
       
-      console.log('Sending payment order request:', orderPayload);
       
       const headers: any = {
         'Content-Type': 'application/json',
@@ -179,9 +178,11 @@ const SubscriptionPayment: React.FC = () => {
 
       const orderData = await orderResponse.json();
       
-      console.log('Order response received:', orderData);
-      console.log('Order data amount:', orderData.data?.amount);
-      console.log('Plan price:', plan.price);
+      // Store order ID for verification
+      const orderId = orderData.id;
+      
+      // Store order ID in localStorage for the handler to access
+      localStorage.setItem('currentOrderId', orderId);
 
       // Initialize Razorpay
       const razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
@@ -214,32 +215,42 @@ const SubscriptionPayment: React.FC = () => {
               // This is a registration flow - register user after payment verification
               const registrationData = JSON.parse(pendingRegistration);
               
+              // Get stored order ID
+              const storedOrderId = localStorage.getItem('currentOrderId');
+              
               // First verify payment
+              const verificationPayload = {
+                razorpay_order_id: response.razorpay_order_id || response.order_id || storedOrderId,
+                razorpay_payment_id: response.razorpay_payment_id || response.payment_id,
+                razorpay_signature: response.razorpay_signature || response.signature,
+                planId: plan._id,
+                registrationData: registrationData, // Include registration data
+              };
+              
+              
               const verifyResponse = await fetch('/api/payments/subscription-verify', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                  razorpay_order_id: response.razorpay_order_id,
-                  razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_signature: response.razorpay_signature,
-                  planId: plan._id,
-                  registrationData: registrationData, // Include registration data
-                }),
+                body: JSON.stringify(verificationPayload),
               });
 
               if (verifyResponse.ok) {
                 const verifyData = await verifyResponse.json();
                 
-                // Store token and clear pending registration
-                localStorage.setItem('token', verifyData.token);
+                // Clear pending registration and order ID
                 localStorage.removeItem('pendingRegistration');
+                localStorage.removeItem('currentOrderId');
                 
-                // Redirect to student dashboard
-                router.push('/student');
+                // Show success popup
+                alert('Registration successful! Please login with your credentials.');
+                
+                // Redirect to login page
+                router.push('/login');
               } else {
-                throw new Error('Payment verification failed');
+                const errorData = await verifyResponse.json();
+                throw new Error(errorData.message || 'Payment verification failed');
               }
             } else {
               // Regular payment flow for existing users
@@ -250,15 +261,16 @@ const SubscriptionPayment: React.FC = () => {
                   'Authorization': `Bearer ${localStorage.getItem('token')}`,
                 },
                 body: JSON.stringify({
-                  razorpay_order_id: response.razorpay_order_id,
-                  razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_signature: response.razorpay_signature,
+                  razorpay_order_id: response.razorpay_order_id || response.order_id || localStorage.getItem('currentOrderId'),
+                  razorpay_payment_id: response.razorpay_payment_id || response.payment_id,
+                  razorpay_signature: response.razorpay_signature || response.signature,
                   planId: plan._id,
                 }),
               });
 
               if (verifyResponse.ok) {
-                // Payment successful - redirect to student dashboard
+                // Payment successful - clean up and redirect to student dashboard
+                localStorage.removeItem('currentOrderId');
                 router.push('/student');
               } else {
                 throw new Error('Payment verification failed');
@@ -436,7 +448,9 @@ const SubscriptionPayment: React.FC = () => {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm text-gray-600">College:</span>
-                        <span className="text-sm font-medium text-gray-900">{plan?.college.name}</span>
+                        <span className="text-sm font-medium text-gray-900">
+                          {plan?.colleges && plan.colleges.length > 0 ? plan.colleges[0].name : 'Multiple Colleges'}
+                        </span>
                       </div>
                     </div>
                   </div>

@@ -9,7 +9,7 @@ export interface ISubscriptionPlan extends mongoose.Document {
   isActive: boolean;
   isDefault: boolean; // Default plan for new students
   createdBy: mongoose.Types.ObjectId; // Admin who created this plan
-  college?: mongoose.Types.ObjectId; // Optional: college-specific plan
+  colleges: mongoose.Types.ObjectId[]; // Multiple colleges this plan is available for
   createdAt: Date;
   updatedAt: Date;
 }
@@ -59,11 +59,10 @@ const SubscriptionPlanSchema = new mongoose.Schema(
       ref: 'User',
       required: true,
     },
-    college: {
+    colleges: [{
       type: mongoose.Schema.Types.ObjectId,
       ref: 'College',
-      required: false,
-    },
+    }],
   },
   {
     timestamps: true,

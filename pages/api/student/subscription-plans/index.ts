@@ -1,10 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import dbConnect from '../../../../utils/db';
+import dbConnect, { preloadModels } from '../../../../utils/db';
 import SubscriptionPlan from '../../../../models/SubscriptionPlan';
 import { verifyToken } from '../../../../utils/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await dbConnect();
+  await preloadModels();
 
   const authHeader = req.headers.authorization;
   let decoded: any = null;
@@ -61,10 +62,10 @@ async function getAvailablePlans(req: NextApiRequest, res: NextApiResponse, deco
     }
 
     const plans = await SubscriptionPlan.find({
-      college: targetCollege,
+      colleges: targetCollege,
       isActive: true,
     })
-      .populate('college', 'name code')
+      .populate('colleges', 'name code')
       .sort({ price: 1 }); // Sort by price ascending
 
     return res.status(200).json({
