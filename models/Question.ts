@@ -8,7 +8,8 @@ export interface IOption {
 export interface IQuestion extends mongoose.Document {
   text: string;
   options: IOption[];
-  exam: mongoose.Types.ObjectId;
+  category: string;
+  exam?: mongoose.Types.ObjectId;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -48,10 +49,15 @@ const QuestionSchema = new mongoose.Schema({
       message: 'Questions must have 2-6 options with at least one correct option',
     },
   },
+  category: {
+    type: String,
+    required: [true, 'Please provide question category'],
+    trim: true,
+  },
   exam: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Exam',
-    required: true,
+    required: false,
   },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
