@@ -88,6 +88,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         assignedBatches,
         totalQuestions,
         questionsToDisplay,
+        course,
       } = req.body;
 
       // Validate input
@@ -97,7 +98,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         !duration ||
         !totalMarks ||
         !totalQuestions ||
-        !questionsToDisplay
+        !questionsToDisplay ||
+        !course
       ) {
         return res.status(400).json({
           success: false,
@@ -131,7 +133,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       // Check if exam with same name already exists in this course (excluding current exam)
       const existingExam = await mongooseUtils.findOne(Exam, {
         name,
-        course: currentExam.course,
+        course: course,
         _id: { $ne: id },
       });
 
@@ -151,6 +153,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         passPercentage: passPercentage || 40, // Default to 40% if not provided
         totalQuestions,
         questionsToDisplay,
+        course,
       };
 
       if (assignedBatches) {

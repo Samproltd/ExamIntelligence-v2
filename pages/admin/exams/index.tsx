@@ -67,6 +67,7 @@ const ExamsPage: React.FC = () => {
 
   // Form state
   const [showForm, setShowForm] = useState(false);
+  const [editingExam, setEditingExam] = useState<Exam | null>(null);
   const [examName, setExamName] = useState('');
   const [examDescription, setExamDescription] = useState('');
   const [examDuration, setExamDuration] = useState(30); // Default 30 minutes
@@ -77,6 +78,11 @@ const ExamsPage: React.FC = () => {
   const [selectedCourse, setSelectedCourse] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [formSubmitting, setFormSubmitting] = useState(false);
+
+  // Delete confirmation state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [examToDelete, setExamToDelete] = useState<Exam | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Fetch exams and courses
   useEffect(() => {
@@ -112,8 +118,36 @@ const ExamsPage: React.FC = () => {
     fetchData();
   }, []);
 
-  // Handle exam creation
-  const handleCreateExam = async (e: React.FormEvent) => {
+  // Reset form
+  const resetForm = () => {
+    setExamName('');
+    setExamDescription('');
+    setExamDuration(30);
+    setExamTotalMarks(100);
+    setExamPassPercentage(40);
+    setExamTotalQuestions(10);
+    setExamQuestionsToDisplay(5);
+    setSelectedCourse('');
+    setEditingExam(null);
+    setFormError(null);
+  };
+
+  // Handle edit exam
+  const handleEditExam = (exam: Exam) => {
+    setEditingExam(exam);
+    setExamName(exam.name);
+    setExamDescription(exam.description);
+    setExamDuration(exam.duration);
+    setExamTotalMarks(exam.totalMarks);
+    setExamPassPercentage(exam.passPercentage);
+    setExamTotalQuestions(exam.totalQuestions);
+    setExamQuestionsToDisplay(exam.questionsToDisplay);
+    setSelectedCourse(exam.course._id);
+    setShowForm(true);
+  };
+
+  // Handle exam creation/update
+  const handleSubmitExam = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!examName.trim() || !examDescription.trim() || !selectedCourse) {
@@ -126,57 +160,123 @@ const ExamsPage: React.FC = () => {
       setFormError(null);
 
       const token = localStorage.getItem('token');
-
-      const response = await axios.post(
-        '/api/exams',
-        {
-          name: examName,
-          description: examDescription,
-          duration: examDuration,
-          totalMarks: examTotalMarks,
-          passPercentage: examPassPercentage,
-          totalQuestions: examTotalQuestions,
-          questionsToDisplay: examQuestionsToDisplay,
-          course: selectedCourse,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      // Add new exam to the list with course info
-      const selectedCourseObj = courses.find(c => c._id === selectedCourse);
-      const newExam = {
-        ...response.data.exam,
-        course: {
-          _id: selectedCourse,
-          name: selectedCourseObj?.name || '',
-          subject: {
-            _id: selectedCourseObj?.subject._id || '',
-            name: selectedCourseObj?.subject.name || '',
-          },
-        },
+      const payload = {
+        name: examName,
+        description: examDescription,
+        duration: examDuration,
+        totalMarks: examTotalMarks,
+        passPercentage: examPassPercentage,
+        totalQuestions: examTotalQuestions,
+        questionsToDisplay: examQuestionsToDisplay,
+        course: selectedCourse,
       };
 
-      setExams([...exams, newExam]);
+      let response;
+      if (editingExam) {
+        // Update existing exam
+        response = await axios.put(
+          `/api/exams/${editingExam._id}`,
+          payload,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
-      // Reset form
-      setExamName('');
-      setExamDescription('');
-      setExamDuration(30);
-      setExamTotalMarks(100);
-      setExamPassPercentage(40);
-      setExamTotalQuestions(10);
-      setExamQuestionsToDisplay(5);
-      setSelectedCourse('');
+        // Update exam in the list
+        const selectedCourseObj = courses.find(c => c._id === selectedCourse);
+        const updatedExam = {
+          ...response.data.exam,
+          course: {
+            _id: selectedCourse,
+            name: selectedCourseObj?.name || '',
+            subject: {
+              _id: selectedCourseObj?.subject._id || '',
+              name: selectedCourseObj?.subject.name || '',
+            },
+          },
+        };
+
+        setExams(exams.map(exam => 
+          exam._id === editingExam._id ? updatedExam : exam
+        ));
+      } else {
+        // Create new exam
+        response = await axios.post(
+          '/api/exams',
+          payload,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        // Add new exam to the list with course info
+        const selectedCourseObj = courses.find(c => c._id === selectedCourse);
+        const newExam = {
+          ...response.data.exam,
+          course: {
+            _id: selectedCourse,
+            name: selectedCourseObj?.name || '',
+            subject: {
+              _id: selectedCourseObj?.subject._id || '',
+              name: selectedCourseObj?.subject.name || '',
+            },
+          },
+        };
+
+        setExams([...exams, newExam]);
+      }
+
+      // Reset form and close
+      resetForm();
       setShowForm(false);
     } catch (err: any) {
-      setFormError(err.response?.data?.message || 'Failed to create exam');
+      setFormError(err.response?.data?.message || `Failed to ${editingExam ? 'update' : 'create'} exam`);
     } finally {
       setFormSubmitting(false);
     }
+  };
+
+  // Handle delete exam
+  const handleDeleteExam = (exam: Exam) => {
+    setExamToDelete(exam);
+    setShowDeleteConfirm(true);
+  };
+
+  // Confirm delete
+  const confirmDelete = async () => {
+    if (!examToDelete) return;
+
+    try {
+      setDeleting(true);
+      const token = localStorage.getItem('token');
+
+      await axios.delete(`/api/exams/${examToDelete._id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      // Remove exam from the list
+      setExams(exams.filter(exam => exam._id !== examToDelete._id));
+      
+      // Close confirmation dialog
+      setShowDeleteConfirm(false);
+      setExamToDelete(null);
+    } catch (err: any) {
+      setFormError(err.response?.data?.message || 'Failed to delete exam');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // Cancel delete
+  const cancelDelete = () => {
+    setShowDeleteConfirm(false);
+    setExamToDelete(null);
   };
 
   return (
@@ -187,21 +287,30 @@ const ExamsPage: React.FC = () => {
             <h1 className="text-3xl font-bold">Manage Exams</h1>
             <Button
               variant="primary"
-              onClick={() => setShowForm(!showForm)}
+              onClick={() => {
+                if (showForm) {
+                  resetForm();
+                  setShowForm(false);
+                } else {
+                  setShowForm(true);
+                }
+              }}
               disabled={courses.length === 0}
             >
               {showForm ? 'Cancel' : 'Add Exam'}
             </Button>
           </div>
 
-          {/* Add Exam Form */}
+          {/* Add/Edit Exam Form */}
           {showForm && (
             <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-              <h2 className="text-xl font-bold mb-4">Add New Exam</h2>
+              <h2 className="text-xl font-bold mb-4">
+                {editingExam ? 'Edit Exam' : 'Add New Exam'}
+              </h2>
 
               {formError && <div className="alert alert-error mb-4">{formError}</div>}
 
-              <form onSubmit={handleCreateExam}>
+              <form onSubmit={handleSubmitExam}>
                 <div className="form-group">
                   <label htmlFor="exam-name">Exam Name</label>
                   <input
@@ -320,7 +429,10 @@ const ExamsPage: React.FC = () => {
 
                 <div className="flex justify-end mt-4">
                   <Button type="submit" variant="primary" disabled={formSubmitting}>
-                    {formSubmitting ? 'Creating...' : 'Create Exam'}
+                    {formSubmitting 
+                      ? (editingExam ? 'Updating...' : 'Creating...') 
+                      : (editingExam ? 'Update Exam' : 'Create Exam')
+                    }
                   </Button>
                 </div>
               </form>
@@ -390,18 +502,56 @@ const ExamsPage: React.FC = () => {
                   </div>
 
                   <div className="flex space-x-2">
-                    <button className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">
+                    <button 
+                      onClick={() => handleEditExam(exam)}
+                      className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
+                    >
                       Edit
                     </button>
-                    <button className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700">
+                    <button 
+                      onClick={() => window.location.href = `/admin/exams/${exam._id}/questions`}
+                      className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors"
+                    >
                       Questions
                     </button>
-                    <button className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700">
+                    <button 
+                      onClick={() => handleDeleteExam(exam)}
+                      className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors"
+                    >
                       Delete
                     </button>
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Delete Confirmation Dialog */}
+          {showDeleteConfirm && examToDelete && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
+                <h3 className="text-lg font-bold mb-4">Confirm Delete</h3>
+                <p className="text-gray-600 mb-6">
+                  Are you sure you want to delete the exam "{examToDelete.name}"? 
+                  This action cannot be undone and will also delete all associated questions and results.
+                </p>
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={cancelDelete}
+                    disabled={deleting}
+                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmDelete}
+                    disabled={deleting}
+                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors disabled:opacity-50"
+                  >
+                    {deleting ? 'Deleting...' : 'Delete'}
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
