@@ -47,7 +47,7 @@ interface SubscriptionPlan {
 
 interface DashboardStats {
   totalColleges: number;
-  totalStudents: number;
+    totalStudents: number;
   totalExams: number;
   totalRevenue: number;
   activeSubscriptions: number;
@@ -71,10 +71,10 @@ const AdminDashboard: React.FC = () => {
   }, []);
 
   const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
-      const token = localStorage.getItem('token');
-      
+      try {
+        setLoading(true);
+        const token = localStorage.getItem('token');
+
       if (!token) {
         window.location.href = '/login';
         return;
@@ -120,10 +120,10 @@ const AdminDashboard: React.FC = () => {
 
       // Fetch admin dashboard stats
       const statsResponse = await fetch('/api/admin/dashboard', {
-        headers: {
+          headers: {
           'Authorization': `Bearer ${token}`,
-        },
-      });
+          },
+        });
 
       if (statsResponse.ok) {
         const statsData = await statsResponse.json();
@@ -131,10 +131,10 @@ const AdminDashboard: React.FC = () => {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load dashboard');
-    } finally {
-      setLoading(false);
-    }
-  };
+      } finally {
+        setLoading(false);
+      }
+    };
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -192,7 +192,7 @@ const AdminDashboard: React.FC = () => {
             >
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <div className="flex items-center justify-between">
-                  <div>
+        <div>
                     <h1 className="text-3xl font-bold text-gray-900">
                       Welcome back, {user?.name}!
                     </h1>
@@ -240,16 +240,16 @@ const AdminDashboard: React.FC = () => {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Total Students</p>
                     <p className="text-2xl font-bold text-gray-900">{stats?.totalStudents || 0}</p>
-                  </div>
-                </div>
               </div>
+            </div>
+          </div>
 
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
                     <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
                       <AcademicCapIcon className="h-6 w-6 text-purple-600" />
-                    </div>
+            </div>
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Total Exams</p>
@@ -395,8 +395,8 @@ const AdminDashboard: React.FC = () => {
                           <PlusIcon className="h-4 w-4 mr-2" />
                           Create Plan
                         </Link>
-                      </div>
-                    </div>
+                  </div>
+              </div>
                   ) : (
                     <div className="space-y-4">
                       {subscriptionPlans.slice(0, 5).map((plan) => (
@@ -453,7 +453,7 @@ const AdminDashboard: React.FC = () => {
                     <h3 className="text-sm font-medium text-gray-900">Manage Colleges</h3>
                     <p className="text-sm text-gray-600">Add and manage colleges</p>
                   </div>
-                </div>
+              </div>
               </Link>
 
               <Link
@@ -482,7 +482,7 @@ const AdminDashboard: React.FC = () => {
                     <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
                       <UsersIcon className="h-6 w-6 text-purple-600" />
                     </div>
-                  </div>
+              </div>
                   <div className="ml-4">
                     <h3 className="text-sm font-medium text-gray-900">Manage Students</h3>
                     <p className="text-sm text-gray-600">View and manage students</p>
@@ -507,7 +507,7 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </Link>
             </motion.div>
-          </div>
+              </div>
         </div>
       </AdminLayout>
     </>
