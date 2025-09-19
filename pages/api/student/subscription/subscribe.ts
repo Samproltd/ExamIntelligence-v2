@@ -112,6 +112,34 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       subscription.paymentStatus = 'completed';
       await subscription.save();
 
+      // 🚨 CRITICAL FIX: Ensure student is assigned to the correct batch
+      // The student should already be in a batch, but let's verify it matches the subscription plan
+      if (student.batch) {
+        // Verify the student's current batch is assigned to this subscription plan
+        const currentBatchAssignment = await BatchSubscriptionAssignment.findOne({
+          batch: student.batch,
+          subscriptionPlan: planId,
+          isActive: true
+        });
+
+        if (!currentBatchAssignment) {
+          // Find a batch that is assigned to this subscription plan
+          const availableBatchAssignment = await BatchSubscriptionAssignment.findOne({
+            subscriptionPlan: planId,
+            isActive: true
+          }).populate('batch');
+
+          if (availableBatchAssignment && availableBatchAssignment.batch) {
+            // Reassign student to the correct batch
+            await User.findByIdAndUpdate(req.user.userId, {
+              batch: availableBatchAssignment.batch._id
+            });
+            
+            console.log(`✅ Student ${req.user.userId} reassigned from batch ${student.batch} to batch ${availableBatchAssignment.batch._id} for subscription plan ${planId}`);
+          }
+        }
+      }
+
       return res.status(200).json({
         success: true,
         message: 'Subscription created successfully',

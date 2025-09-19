@@ -51,6 +51,7 @@ interface Subject {
 const BatchesPage = () => {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [batchAssignments, setBatchAssignments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -87,6 +88,18 @@ const BatchesPage = () => {
       setSubjects(response.data.subjects || []);
     } catch (error) {
       console.error('Error fetching subjects:', error);
+    }
+  };
+
+  // Fetch batch assignments
+  const fetchBatchAssignments = async () => {
+    try {
+      const response = await axios.get('/api/admin/batch-assignments', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setBatchAssignments(response.data.data || []);
+    } catch (err) {
+      console.error('Error fetching batch assignments:', err);
     }
   };
 
@@ -214,11 +227,26 @@ const BatchesPage = () => {
     });
   };
 
+  // Helper function to check if batch has subscription assignment
+  const getBatchSubscriptionStatus = (batchId: string) => {
+    const assignment = batchAssignments.find(assignment => assignment.batch._id === batchId);
+    return assignment ? {
+      hasAssignment: true,
+      planName: assignment.subscriptionPlan.name,
+      isActive: assignment.isActive
+    } : {
+      hasAssignment: false,
+      planName: null,
+      isActive: false
+    };
+  };
+
   // Effect to fetch batches when component mounts or dependencies change
   useEffect(() => {
     if (token) {
       fetchBatches();
       fetchSubjects();
+      fetchBatchAssignments();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, search, token]);
@@ -231,6 +259,32 @@ const BatchesPage = () => {
             <h1 className="text-2xl font-bold">Batch Management</h1>
             <Button onClick={() => setShowAddModal(true)}>Add New Batch</Button>
           </div>
+
+          {/* Warning for batches without subscription assignments */}
+          {batches.some(batch => !getBatchSubscriptionStatus(batch._id).hasAssignment) && (
+            <div className="mb-6 bg-orange-50 border border-orange-200 rounded-lg p-4">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-orange-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-orange-800">
+                    Subscription Assignment Required
+                  </h3>
+                  <div className="mt-2 text-sm text-orange-700">
+                    <p>
+                      Some batches are not assigned to subscription plans. Students in these batches cannot see or access exams.
+                      <Link href="/admin/batch-assignments" className="ml-1 font-medium underline hover:text-orange-600">
+                        Assign subscription plans now →
+                      </Link>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Search and filters */}
           <div className="mb-6">
@@ -269,6 +323,7 @@ const BatchesPage = () => {
                     <th className="px-4 py-3 text-left">Description</th>
                     <th className="px-4 py-3 text-center">Year</th>
                     <th className="px-4 py-3 text-center">Status</th>
+                    <th className="px-4 py-3 text-center">Subscription</th>
                     <th className="px-4 py-3 text-center">Created</th>
                     <th className="px-4 py-3 text-center">Actions</th>
                   </tr>
@@ -296,6 +351,34 @@ const BatchesPage = () => {
                           {batch.isActive ? 'Active' : 'Inactive'}
                         </span>
                       </td>
+                      <td className="px-4 py-3 text-center">
+                        {(() => {
+                          const subscriptionStatus = getBatchSubscriptionStatus(batch._id);
+                          if (subscriptionStatus.hasAssignment) {
+                            return (
+                              <span
+                                className={`inline-block px-2 py-1 rounded text-xs ${
+                                  subscriptionStatus.isActive
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}
+                                title={`Assigned to: ${subscriptionStatus.planName}`}
+                              >
+                                {subscriptionStatus.planName}
+                              </span>
+                            );
+                          } else {
+                            return (
+                              <span
+                                className="inline-block px-2 py-1 rounded text-xs bg-red-100 text-red-800"
+                                title="No subscription plan assigned - Students cannot see exams"
+                              >
+                                Not Assigned
+                              </span>
+                            );
+                          }
+                        })()}
+                      </td>
                       <td className="px-4 py-3 text-center">{formatDate(batch.createdAt)}</td>
                       <td className="px-4 py-3 text-center">
                         <div className="flex justify-center gap-2">
@@ -315,6 +398,13 @@ const BatchesPage = () => {
                               View
                             </span>
                           </Link>
+                          {!getBatchSubscriptionStatus(batch._id).hasAssignment && (
+                            <Link href="/admin/batch-assignments">
+                              <span className="px-2 py-1 rounded text-xs bg-orange-100 text-orange-800 hover:bg-orange-200" title="Assign Subscription Plan">
+                                Assign Plan
+                              </span>
+                            </Link>
+                          )}
                           <button
                             onClick={() => deleteBatch(batch._id)}
                             className="px-2 py-1 rounded text-xs bg-red-100 text-red-800 hover:bg-red-200"

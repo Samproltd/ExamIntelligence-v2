@@ -57,7 +57,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       // Build query for exams
       let examQuery: any = { course: id };
 
-      // If student is in a batch, show exams assigned to their batch or with no batch assignments
+      // If student is in a batch, show exams assigned to their batch
+      // NOTE: Subscription validation is already done above, so we can safely show exams
       if (studentBatchId) {
         examQuery = {
           course: id,

@@ -149,11 +149,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     await subscription.save();
 
-    // Update user's subscription status
-    await User.findByIdAndUpdate(userId, {
-      subscription: subscription._id,
-      subscriptionStatus: 'active',
-    });
+    // 🚨 CRITICAL FIX: Find and assign student to a batch based on subscription plan
+    const BatchSubscriptionAssignment = (await import('../../../models/BatchSubscriptionAssignment')).default;
+    const Batch = (await import('../../../models/Batch')).default;
+    
+    // Find a batch assigned to this subscription plan
+    const batchAssignment = await BatchSubscriptionAssignment.findOne({
+      subscriptionPlan: planId,
+      isActive: true
+    }).populate('batch');
+
+    let assignedBatchId = null;
+    
+    if (batchAssignment && batchAssignment.batch) {
+      // Assign student to the batch
+      assignedBatchId = batchAssignment.batch._id;
+      await User.findByIdAndUpdate(userId, {
+        batch: assignedBatchId,
+        subscription: subscription._id,
+        subscriptionStatus: 'active',
+      });
+      
+      console.log(`✅ Student ${userId} assigned to batch ${assignedBatchId} via subscription plan ${planId}`);
+    } else {
+      // Update user's subscription status without batch assignment
+      await User.findByIdAndUpdate(userId, {
+        subscription: subscription._id,
+        subscriptionStatus: 'active',
+      });
+      
+      console.log(`⚠️ No batch found for subscription plan ${planId}. Student ${userId} has subscription but no batch assignment.`);
+    }
 
     // Send confirmation email (you can implement this later)
     // await sendSubscriptionConfirmationEmail(user.email, subscription);
@@ -174,6 +200,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           status: subscription.status,
           paymentId: subscription.paymentId,
         },
+        batch: assignedBatchId ? {
+          id: assignedBatchId,
+          name: batchAssignment?.batch?.name || 'Unknown Batch',
+          assigned: true
+        } : {
+          assigned: false,
+          message: 'No batch assigned to this subscription plan'
+        }
       },
     };
 

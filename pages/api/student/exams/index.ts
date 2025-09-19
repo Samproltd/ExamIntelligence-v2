@@ -48,6 +48,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       console.log(`✅ Subscription validation passed for student: ${req.user.userId}`);
 
       // Build query for exams assigned to student's batch
+      // NOTE: Subscription validation is already done above, so we can safely show exams
       const examQuery = {
         assignedBatches: { $in: [studentBatchId] }, // Only show exams assigned to student's batch
       };

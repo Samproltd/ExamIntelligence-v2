@@ -475,6 +475,14 @@ const StudentDetailPage = () => {
                           'Not assigned'
                         )}
                       </p>
+                      {student.batch && (
+                        <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm">
+                          <p className="text-yellow-800">
+                            <strong>⚠️ Important:</strong> Student must have a valid subscription to see exams.
+                            Batch assignment alone is not sufficient for exam access.
+                          </p>
+                        </div>
+                      )}
                       <p className="mb-2">
                         <span className="font-semibold">Registered:</span>{' '}
                         {formatDate(student.createdAt)}
@@ -746,6 +754,12 @@ const StudentDetailPage = () => {
                         </option>
                       ))}
                     </select>
+                    <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded text-sm">
+                      <p className="text-orange-800">
+                        <strong>⚠️ Note:</strong> Batch assignment alone won't give exam access. 
+                        Student must also have a valid subscription to the plan assigned to this batch.
+                      </p>
+                    </div>
                   </div>
                   <div className="flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={() => setShowEditModal(false)}>

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Debug Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        .debug-section {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+            background-color: #f8f9fa;
+        }
+        .error {
+            border-left-color: #dc3545;
+            background-color: #f8d7da;
+        }
+        .success {
+            border-left-color: #28a745;
+            background-color: #d4edda;
+        }
+        .warning {
+            border-left-color: #ffc107;
+            background-color: #fff3cd;
+        }
+        .step {
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 10px;
+        }
+        .issue {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .solution {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .json-output {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .loading {
+            text-align: center;
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Student Exam Visibility Debug Tool</h1>
+            <p>Checking status for: <strong>bhushan0242@gmail.com</strong></p>
+        </div>
+
+        <div style="text-align: center; margin-bottom: 30px;">
+            <button onclick="checkStudentStatus()">Check Student Status</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        async function checkStudentStatus() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="loading">🔄 Checking student status...</div>';
+
+            try {
+                const response = await fetch('/api/debug/student-status');
+                const data = await response.json();
+
+                let html = '';
+                
+                if (data.success) {
+                    html = `
+                        <div class="debug-section success">
+                            <div class="step">✅ SUCCESS: All checks passed!</div>
+                            <p>Student should be able to see exams.</p>
+                        </div>
+                    `;
+                } else {
+                    html = `
+                        <div class="debug-section error">
+                            <div class="step">❌ ISSUE FOUND</div>
+                            <div class="issue">${data.message}</div>
+                            <div class="solution">Solution: ${data.debug.solution || 'Check the debug info below'}</div>
+                        </div>
+                    `;
+                }
+
+                // Add debug information
+                html += `
+                    <div class="debug-section">
+                        <div class="step">📋 Debug Information</div>
+                        <div class="json-output">${JSON.stringify(data.debug, null, 2)}</div>
+                    </div>
+                `;
+
+                // Add step-by-step analysis
+                if (data.debug && data.debug.step) {
+                    html += `
+                        <div class="debug-section warning">
+                            <div class="step">🔍 Analysis</div>
+                            <p><strong>Failed at step:</strong> ${data.debug.step}</p>
+                            <p><strong>Issue:</strong> ${data.debug.issue}</p>
+                            ${data.debug.solution ? `<p><strong>Solution:</strong> ${data.debug.solution}</p>` : ''}
+                        </div>
+                    `;
+                }
+
+                resultsDiv.innerHTML = html;
+
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="debug-section error">
+                        <div class="step">❌ Error</div>
+                        <p>Failed to check student status: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Auto-run on page load
+        window.onload = function() {
+            checkStudentStatus();
+        };
+    </script>
+</body>
+</html>
