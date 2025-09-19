@@ -31,17 +31,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         });
 
         if (invalidSessions.length > 0) {
-          console.log(`Found ${invalidSessions.length} invalid sessions to clean up`);
-
           // Delete the invalid sessions
           await mongooseUtils.deleteMany(ActiveExamSession, {
             _id: { $in: invalidSessions.map(session => session._id) },
           });
-
-          console.log(`Cleaned up ${invalidSessions.length} invalid sessions`);
         }
       } catch (cleanupError) {
-        console.error('Error during session cleanup:', cleanupError);
         // Continue with the rest of the function even if cleanup fails
       }
 
@@ -230,7 +225,90 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         totalActive: processedSessions.length,
       });
     } catch (error) {
-      console.error('Error fetching active exam sessions:', error);
+      return res.status(500).json({ success: false, message: 'Server error' });
+    }
+  }
+
+  // DELETE - Terminate active session
+  if (req.method === 'DELETE') {
+    try {
+      const { sessionId } = req.body;
+
+      if (!sessionId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Session ID is required',
+        });
+      }
+
+      if (!mongoose.Types.ObjectId.isValid(sessionId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid session ID',
+        });
+      }
+
+      const session = await mongooseUtils.findById(ActiveExamSession, sessionId);
+      if (!session) {
+        return res.status(404).json({
+          success: false,
+          message: 'Session not found',
+        });
+      }
+
+      // Mark session as terminated
+      session.isActive = false;
+      session.endTime = new Date();
+      await session.save();
+
+      return res.status(200).json({
+        success: true,
+        message: 'Session terminated successfully',
+      });
+    } catch (error) {
+      return res.status(500).json({ success: false, message: 'Server error' });
+    }
+  }
+
+  // PUT - Extend session time
+  if (req.method === 'PUT') {
+    try {
+      const { sessionId, additionalTime } = req.body;
+
+      if (!sessionId || !additionalTime) {
+        return res.status(400).json({
+          success: false,
+          message: 'Session ID and additional time are required',
+        });
+      }
+
+      if (!mongoose.Types.ObjectId.isValid(sessionId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid session ID',
+        });
+      }
+
+      const session = await mongooseUtils.findById(ActiveExamSession, sessionId);
+      if (!session) {
+        return res.status(404).json({
+          success: false,
+          message: 'Session not found',
+        });
+      }
+
+      // Extend the session time
+      const currentEndTime = new Date(session.endTime);
+      currentEndTime.setMinutes(currentEndTime.getMinutes() + parseInt(additionalTime));
+      session.endTime = currentEndTime;
+      await session.save();
+
+      return res.status(200).json({
+        success: true,
+        message: 'Session time extended successfully',
+        newEndTime: session.endTime,
+      });
+    } catch (error) {
       return res.status(500).json({ success: false, message: 'Server error' });
     }
   }

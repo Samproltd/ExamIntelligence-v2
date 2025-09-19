@@ -17,10 +17,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return res.status(403).json({ success: false, message: 'Admin access required' });
   }
 
-  // Only GET method is allowed
-  if (req.method !== 'GET') {
-    return res.status(405).json({ success: false, message: 'Method not allowed' });
-  }
+  // Handle different HTTP methods
+  if (req.method === 'GET') {
 
   try {
     const {
@@ -389,9 +387,46 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       },
     });
   } catch (error) {
-    console.error('Error fetching results:', error);
     return res.status(500).json({ success: false, message: 'Server error' });
   }
+
+  // DELETE - Bulk delete results
+  if (req.method === 'DELETE') {
+    try {
+      const { resultIds } = req.body;
+
+      if (!resultIds || !Array.isArray(resultIds) || resultIds.length === 0) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Result IDs array is required' 
+        });
+      }
+
+      // Validate all IDs
+      const invalidIds = resultIds.filter(id => !mongoose.Types.ObjectId.isValid(id));
+      if (invalidIds.length > 0) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Invalid result IDs provided' 
+        });
+      }
+
+      const deleteResult = await mongooseUtils.deleteMany(Result, {
+        _id: { $in: resultIds }
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: `${deleteResult.deletedCount} results deleted successfully`,
+        deletedCount: deleteResult.deletedCount
+      });
+    } catch (error) {
+      return res.status(500).json({ success: false, message: 'Server error' });
+    }
+  }
+
+  // Method not allowed
+  return res.status(405).json({ success: false, message: 'Method not allowed' });
 }
 
 export default authenticateAPI(handler);

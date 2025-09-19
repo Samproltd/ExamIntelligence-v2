@@ -54,7 +54,26 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         result,
       });
     } catch (error) {
-      console.error('Error fetching result details:', error);
+      return res.status(500).json({ success: false, message: 'Server error' });
+    }
+  }
+
+  // DELETE - Delete a result
+  if (req.method === 'DELETE') {
+    try {
+      const result = await mongooseUtils.findById(Result, id as string);
+      
+      if (!result) {
+        return res.status(404).json({ success: false, message: 'Result not found' });
+      }
+
+      await mongooseUtils.deleteById(Result, id as string);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Result deleted successfully',
+      });
+    } catch (error) {
       return res.status(500).json({ success: false, message: 'Server error' });
     }
   }
