@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import dbConnect, { preloadModels } from '../../../utils/db';
 import Question from '../../../models/Question';
 import { verifyToken } from '../../../utils/auth';
+import mongoose from 'mongoose';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   await dbConnect();
@@ -53,7 +54,6 @@ async function bulkDeleteQuestions(req: NextApiRequest, res: NextApiResponse) {
     }
 
     // Validate all IDs are valid ObjectIds
-    const mongoose = require('mongoose');
     const invalidIds = questionIds.filter((id: string) => !mongoose.Types.ObjectId.isValid(id));
     if (invalidIds.length > 0) {
       return res.status(400).json({
@@ -105,7 +105,6 @@ async function bulkUpdateQuestions(req: NextApiRequest, res: NextApiResponse) {
     }
 
     // Validate all IDs are valid ObjectIds
-    const mongoose = require('mongoose');
     const invalidIds = questionIds.filter((id: string) => !mongoose.Types.ObjectId.isValid(id));
     if (invalidIds.length > 0) {
       return res.status(400).json({

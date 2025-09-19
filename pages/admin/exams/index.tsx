@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import AdminLayout from '../../../components/AdminLayout';
 import ProtectedRoute from '../../../components/ProtectedRoute';
-import ExamCard from '../../../components/ExamCard';
 import Button from '../../../components/Button';
 
 interface Exam {
@@ -14,6 +13,10 @@ interface Exam {
   passPercentage: number;
   totalQuestions: number;
   questionsToDisplay: number;
+  maxAttempts: number;
+  isActive: boolean;
+  examType: 'practice' | 'assessment' | 'final';
+  proctoringLevel: 'basic' | 'advanced' | 'ai_enhanced';
   course: {
     _id: string;
     name: string;
@@ -32,6 +35,12 @@ interface Exam {
     name: string;
     code: string;
   };
+  assignedBatches?: Array<{
+    _id: string;
+    name: string;
+    description: string;
+    year: number;
+  }>;
   createdBy: {
     _id: string;
     name: string;
@@ -62,7 +71,9 @@ interface Course {
 const ExamsPage: React.FC = () => {
   const [exams, setExams] = useState<Exam[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [batches, setBatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingBatches, setLoadingBatches] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Form state
@@ -75,7 +86,11 @@ const ExamsPage: React.FC = () => {
   const [examPassPercentage, setExamPassPercentage] = useState(40); // Default 40%
   const [examTotalQuestions, setExamTotalQuestions] = useState(10); // Default 10 questions
   const [examQuestionsToDisplay, setExamQuestionsToDisplay] = useState(5); // Default 5 questions
+  const [examMaxAttempts, setExamMaxAttempts] = useState(1); // Default 1 attempt
+  const [examType, setExamType] = useState<'practice' | 'assessment' | 'final'>('assessment');
+  const [proctoringLevel, setProctoringLevel] = useState<'basic' | 'advanced' | 'ai_enhanced'>('basic');
   const [selectedCourse, setSelectedCourse] = useState('');
+  const [selectedBatches, setSelectedBatches] = useState<string[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
   const [formSubmitting, setFormSubmitting] = useState(false);
 
@@ -83,6 +98,32 @@ const ExamsPage: React.FC = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [examToDelete, setExamToDelete] = useState<Exam | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Fetch batches for a specific course
+  const fetchBatches = async (courseId: string) => {
+    if (!courseId) {
+      setBatches([]);
+      return;
+    }
+
+    try {
+      setLoadingBatches(true);
+      const token = localStorage.getItem('token');
+      
+      const response = await axios.get(`/api/batches?course=${courseId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      setBatches(response.data.batches || []);
+    } catch (err: any) {
+      console.error('Failed to fetch batches:', err);
+      setBatches([]);
+    } finally {
+      setLoadingBatches(false);
+    }
+  };
 
   // Fetch exams and courses
   useEffect(() => {
@@ -118,6 +159,15 @@ const ExamsPage: React.FC = () => {
     fetchData();
   }, []);
 
+  // Fetch batches when course changes
+  useEffect(() => {
+    if (selectedCourse) {
+      fetchBatches(selectedCourse);
+    } else {
+      setBatches([]);
+    }
+  }, [selectedCourse]);
+
   // Reset form
   const resetForm = () => {
     setExamName('');
@@ -127,7 +177,11 @@ const ExamsPage: React.FC = () => {
     setExamPassPercentage(40);
     setExamTotalQuestions(10);
     setExamQuestionsToDisplay(5);
+    setExamMaxAttempts(1);
+    setExamType('assessment');
+    setProctoringLevel('basic');
     setSelectedCourse('');
+    setSelectedBatches([]);
     setEditingExam(null);
     setFormError(null);
   };
@@ -142,7 +196,15 @@ const ExamsPage: React.FC = () => {
     setExamPassPercentage(exam.passPercentage);
     setExamTotalQuestions(exam.totalQuestions);
     setExamQuestionsToDisplay(exam.questionsToDisplay);
+    setExamMaxAttempts(exam.maxAttempts || 1);
+    setExamType(exam.examType || 'assessment');
+    setProctoringLevel(exam.proctoringLevel || 'basic');
     setSelectedCourse(exam.course._id);
+    setSelectedBatches(
+      exam.assignedBatches
+        ?.filter(batch => batch && batch._id)
+        ?.map(batch => batch._id) || []
+    );
     setShowForm(true);
   };
 
@@ -168,7 +230,11 @@ const ExamsPage: React.FC = () => {
         passPercentage: examPassPercentage,
         totalQuestions: examTotalQuestions,
         questionsToDisplay: examQuestionsToDisplay,
+        maxAttempts: examMaxAttempts,
+        examType: examType,
+        proctoringLevel: proctoringLevel,
         course: selectedCourse,
+        assignedBatches: selectedBatches,
       };
 
       let response;
@@ -347,11 +413,13 @@ const ExamsPage: React.FC = () => {
                     required
                   >
                     <option value="">Select a course</option>
-                    {courses.map(course => (
-                      <option key={course._id} value={course._id}>
-                        {course.name} - {course.subject.name} ({course.college?.name})
-                      </option>
-                    ))}
+                    {courses
+                      .filter(course => course && course._id && course.name)
+                      .map(course => (
+                        <option key={course._id} value={course._id}>
+                          {course.name} - {course.subject?.name || 'N/A'} ({course.college?.name || 'N/A'})
+                        </option>
+                      ))}
                   </select>
                 </div>
 
@@ -427,6 +495,97 @@ const ExamsPage: React.FC = () => {
                   </div>
                 </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                  <div className="form-group">
+                    <label htmlFor="exam-max-attempts">Max Attempts</label>
+                    <input
+                      type="number"
+                      id="exam-max-attempts"
+                      className="form-control"
+                      value={examMaxAttempts}
+                      onChange={e => setExamMaxAttempts(parseInt(e.target.value))}
+                      min={1}
+                      max={10}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="exam-type">Exam Type</label>
+                    <select
+                      id="exam-type"
+                      className="form-control"
+                      value={examType}
+                      onChange={e => setExamType(e.target.value as 'practice' | 'assessment' | 'final')}
+                      required
+                    >
+                      <option value="practice">Practice</option>
+                      <option value="assessment">Assessment</option>
+                      <option value="final">Final</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="proctoring-level">Proctoring Level</label>
+                    <select
+                      id="proctoring-level"
+                      className="form-control"
+                      value={proctoringLevel}
+                      onChange={e => setProctoringLevel(e.target.value as 'basic' | 'advanced' | 'ai_enhanced')}
+                      required
+                    >
+                      <option value="basic">Basic</option>
+                      <option value="advanced">Advanced</option>
+                      <option value="ai_enhanced">AI Enhanced</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Batch Assignment Section */}
+                <div className="form-group mt-4">
+                  <label className="block mb-2 font-medium">Assign to Batches</label>
+                  <div className="mb-2 text-sm text-blue-600 bg-blue-50 p-3 rounded-lg border border-blue-200">
+                    <strong>Important:</strong> Exams are only visible to students in the
+                    assigned batches. If no batches are selected, no students will be able to
+                    see or take this exam.
+                  </div>
+
+                  {loadingBatches ? (
+                    <div className="flex items-center text-sm text-gray-500">
+                      <div className="animate-spin mr-2 h-4 w-4 border-t-2 border-b-2 border-primary-color rounded-full"></div>
+                      Loading batches...
+                    </div>
+                  ) : batches.length === 0 ? (
+                    <div className="text-sm text-gray-500">
+                      {selectedCourse ? 'No batches available for this course' : 'Select a course first to see available batches'}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-40 overflow-y-auto border border-gray-200 rounded p-3">
+                      {batches
+                        .filter(batch => batch && batch._id && batch.name)
+                        .map(batch => (
+                          <label key={batch._id} className="flex items-center space-x-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedBatches.includes(batch._id)}
+                              onChange={e => {
+                                if (e.target.checked) {
+                                  setSelectedBatches([...selectedBatches, batch._id]);
+                                } else {
+                                  setSelectedBatches(selectedBatches.filter(id => id !== batch._id));
+                                }
+                              }}
+                              className="rounded border-gray-300 text-primary-color focus:ring-primary-color"
+                            />
+                            <span className="text-sm">
+                              {batch.name} ({batch.year || 'N/A'})
+                            </span>
+                          </label>
+                        ))}
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex justify-end mt-4">
                   <Button type="submit" variant="primary" disabled={formSubmitting}>
                     {formSubmitting 
@@ -464,15 +623,17 @@ const ExamsPage: React.FC = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {exams.map(exam => (
+              {exams
+                .filter(exam => exam && exam._id)
+                .map(exam => (
                 <div key={exam._id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
                   <div className="flex justify-between items-start mb-3">
-                    <h3 className="text-xl font-semibold text-gray-900">{exam.name}</h3>
+                    <h3 className="text-xl font-semibold text-gray-900">{exam.name || 'Untitled Exam'}</h3>
                     <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
-                      {exam.college?.name}
+                      {exam.college?.name || 'N/A'}
                     </span>
                   </div>
-                  <p className="text-gray-600 mb-4">{exam.description}</p>
+                  <p className="text-gray-600 mb-4">{exam.description || 'No description'}</p>
                   
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div className="text-sm">
@@ -494,11 +655,23 @@ const ExamsPage: React.FC = () => {
                   </div>
 
                   <div className="text-sm text-gray-500 space-y-1 mb-4">
-                    <p><strong>Course:</strong> {exam.course?.name}</p>
-                    <p><strong>Subject:</strong> {exam.course?.subject?.name}</p>
-                    <p><strong>College:</strong> {exam.college?.name} ({exam.college?.code})</p>
-                    <p><strong>Created by:</strong> {exam.createdBy?.name}</p>
-                    <p><strong>Created:</strong> {new Date(exam.createdAt).toLocaleDateString()}</p>
+                    <p><strong>Course:</strong> {exam.course?.name || 'N/A'}</p>
+                    <p><strong>Subject:</strong> {exam.course?.subject?.name || 'N/A'}</p>
+                    <p><strong>College:</strong> {exam.college?.name || 'N/A'} ({exam.college?.code || 'N/A'})</p>
+                    <p><strong>Type:</strong> {exam.examType || 'assessment'} | <strong>Attempts:</strong> {exam.maxAttempts || 1}</p>
+                    <p><strong>Assigned Batches:</strong> {exam.assignedBatches?.length || 0}</p>
+                    {exam.assignedBatches && exam.assignedBatches.length > 0 && (
+                      <div className="mt-1">
+                        <span className="text-xs text-blue-600">
+                          {exam.assignedBatches
+                            .filter(batch => batch && batch.name)
+                            .map(batch => batch.name)
+                            .join(', ') || 'No valid batches'}
+                        </span>
+                      </div>
+                    )}
+                    <p><strong>Created by:</strong> {exam.createdBy?.name || 'N/A'}</p>
+                    <p><strong>Created:</strong> {exam.createdAt ? new Date(exam.createdAt).toLocaleDateString() : 'N/A'}</p>
                   </div>
 
                   <div className="flex space-x-2">

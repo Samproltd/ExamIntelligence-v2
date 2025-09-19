@@ -8,11 +8,8 @@ import {
   UsersIcon,
   LinkIcon,
   ChartBarIcon,
-  CogIcon,
   PlusIcon,
-  EyeIcon,
-  PencilIcon,
-  TrashIcon
+  EyeIcon
 } from '@heroicons/react/24/outline';
 import AdminLayout from '../../../components/AdminLayout';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner';

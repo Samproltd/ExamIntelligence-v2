@@ -9,6 +9,7 @@ import * as mongooseUtils from '../../../../utils/mongooseUtils';
 import Batch from '../../../../models/Batch';
 import Result from '../../../../models/Result';
 import Payment from '../../../../models/Payment';
+import { validateStudentSubscription } from '../../../../utils/subscriptionValidation';
 
 // Define interfaces for type safety
 interface IExam {
@@ -102,6 +103,20 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             message: 'This exam is not assigned to your batch',
           });
         }
+      }
+
+      // ✅ ADD: Subscription validation
+      const subscriptionValidation = await validateStudentSubscription(req.user.userId, studentBatchId);
+      
+      if (!subscriptionValidation.valid) {
+        return res.status(403).json({
+          success: false,
+          message: subscriptionValidation.reason,
+          subscriptionRequired: subscriptionValidation.subscriptionPlan || null,
+          hasActiveSubscription: subscriptionValidation.hasActiveSubscription,
+          subscriptionExpired: subscriptionValidation.subscriptionExpired,
+          batchNotAssigned: subscriptionValidation.batchNotAssigned
+        });
       }
 
       // Check previous attempts, excluding those from previous payment cycles

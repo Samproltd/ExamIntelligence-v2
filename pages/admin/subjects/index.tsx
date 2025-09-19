@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import AdminLayout from "../../../components/AdminLayout";
 import ProtectedRoute from "../../../components/ProtectedRoute";
-import SubjectCard from "../../../components/SubjectCard";
 import Button from "../../../components/Button";
 
 interface Subject {

@@ -7,6 +7,7 @@ import Exam from '../../../models/Exam';
 import Result from '../../../models/Result';
 import User from '../../../models/User';
 import * as mongooseUtils from '../../../utils/mongooseUtils';
+import { validateStudentSubscription, getStudentSubscriptionStatus } from '../../../utils/subscriptionValidation';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   await dbConnect();
@@ -69,27 +70,41 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const student = await mongooseUtils.findById(User, req.user.userId);
       const studentBatchId = student?.batch;
 
+      // ✅ ADD: Get subscription status for dashboard
+      const subscriptionStatus = await getStudentSubscriptionStatus(req.user.userId);
+
       // Get upcoming exams (exams not yet taken by the student and assigned to their batch or with no batch assignment)
       const takenExamIds = new Set(takenExams.map(id => id.toString()));
 
       // Build query for exams
       let examQuery: any = {};
+      let upcomingExams: any[] = [];
 
       // If student is in a batch, show exams assigned to their batch or with no batch assignments
       if (studentBatchId) {
-        examQuery = {
-          assignedBatches: { $in: [studentBatchId] }, // Only show exams assigned to student's batch
-        };
+        // ✅ ADD: Subscription validation for upcoming exams
+        const subscriptionValidation = await validateStudentSubscription(req.user.userId, studentBatchId);
+        
+        if (subscriptionValidation.valid) {
+          examQuery = {
+            assignedBatches: { $in: [studentBatchId] }, // Only show exams assigned to student's batch
+          };
+          
+          upcomingExams = await mongooseUtils.find(Exam, examQuery, null, {
+            populate: { path: 'course', select: 'name' },
+            sort: { createdAt: -1 },
+            limit: 10,
+          });
+        } else {
+          // If subscription is invalid, don't show any exams
+          examQuery = { _id: { $exists: false } }; // This will return no results
+          upcomingExams = [];
+        }
       } else {
         // If student has no batch, don't show any exams
         examQuery = { _id: { $exists: false } }; // This will return no results
+        upcomingExams = [];
       }
-
-      const upcomingExams = await mongooseUtils.find(Exam, examQuery, null, {
-        populate: { path: 'course', select: 'name' },
-        sort: { createdAt: -1 },
-        limit: 10,
-      });
 
       const filteredUpcomingExams = upcomingExams
         .filter(exam => !takenExamIds.has(exam._id.toString()))
@@ -102,6 +117,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         upcomingExams: filteredUpcomingExams,
         recentResults,
         user: student,
+        subscriptionStatus, // ✅ ADD: Include subscription status in response
       });
     } catch (error) {
       console.error('Error fetching student dashboard data:', error);

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import AdminLayout from "../../../components/AdminLayout";
 import ProtectedRoute from "../../../components/ProtectedRoute";
-import CourseCard from "../../../components/CourseCard";
 import Button from "../../../components/Button";
 import Snackbar from "../../../components/Snackbar";
 import useToast from "../../../hooks/useToast";

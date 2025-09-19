@@ -85,6 +85,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             },
           })
           .populate('college', 'name code')
+          .populate('assignedBatches', 'name description year')
           .sort({ createdAt: -1 });
 
         // Find results for this student
@@ -121,6 +122,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           })
           .populate('college', 'name code')
           .populate('createdBy', 'name email')
+          .populate('assignedBatches', 'name description year')
           .sort({ createdAt: -1 });
 
         return res.status(200).json({
@@ -147,6 +149,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           passPercentage,
           totalQuestions,
           questionsToDisplay,
+          maxAttempts,
+          examType,
+          proctoringLevel,
+          assignedBatches,
         } = req.body;
 
         // Validate input
@@ -218,6 +224,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           passPercentage: passPercentage || 40, // Default to 40% if not provided
           totalQuestions,
           questionsToDisplay,
+          maxAttempts: maxAttempts || 1, // Default to 1 attempt if not provided
+          examType: examType || 'assessment', // Default to assessment if not provided
+          proctoringLevel: proctoringLevel || 'basic', // Default to basic if not provided
+          assignedBatches: assignedBatches || [], // Default to empty array if not provided
           createdBy: req.user.userId,
         });
 
@@ -236,7 +246,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             },
           })
           .populate('college', 'name code')
-          .populate('createdBy', 'name email');
+          .populate('createdBy', 'name email')
+          .populate('assignedBatches', 'name description year');
 
         return res.status(201).json({
           success: true,

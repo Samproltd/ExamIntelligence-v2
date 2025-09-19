@@ -7,6 +7,7 @@ import Course from '../../../../../models/Course';
 import User from '../../../../../models/User';
 import mongoose from 'mongoose';
 import * as mongooseUtils from '../../../../../utils/mongooseUtils';
+import { validateStudentSubscription } from '../../../../../utils/subscriptionValidation';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   await dbConnect();
@@ -36,6 +37,22 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       // Get student's batch
       const student = await mongooseUtils.findById(User, req.user.userId);
       const studentBatchId = student?.batch;
+
+      // ✅ ADD: Subscription validation
+      if (studentBatchId) {
+        const subscriptionValidation = await validateStudentSubscription(req.user.userId, studentBatchId);
+        
+        if (!subscriptionValidation.valid) {
+          return res.status(403).json({
+            success: false,
+            message: subscriptionValidation.reason,
+            subscriptionRequired: subscriptionValidation.subscriptionPlan || null,
+            hasActiveSubscription: subscriptionValidation.hasActiveSubscription,
+            subscriptionExpired: subscriptionValidation.subscriptionExpired,
+            batchNotAssigned: subscriptionValidation.batchNotAssigned
+          });
+        }
+      }
 
       // Build query for exams
       let examQuery: any = { course: id };

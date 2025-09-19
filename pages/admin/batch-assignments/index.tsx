@@ -3,9 +3,7 @@ import { motion } from 'framer-motion';
 import { 
   LinkIcon,
   PlusIcon,
-  PencilIcon,
   TrashIcon,
-  EyeIcon,
   MagnifyingGlassIcon,
   BuildingOfficeIcon,
   UsersIcon,

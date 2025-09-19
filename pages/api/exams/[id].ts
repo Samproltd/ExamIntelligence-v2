@@ -89,6 +89,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         totalQuestions,
         questionsToDisplay,
         course,
+        maxAttempts,
+        examType,
+        proctoringLevel,
       } = req.body;
 
       // Validate input
@@ -154,6 +157,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         totalQuestions,
         questionsToDisplay,
         course,
+        maxAttempts: maxAttempts || 1, // Default to 1 attempt if not provided
+        examType: examType || 'assessment', // Default to assessment if not provided
+        proctoringLevel: proctoringLevel || 'basic', // Default to basic if not provided
       };
 
       if (assignedBatches) {
@@ -172,9 +178,27 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         return res.status(404).json({ success: false, message: 'Exam not found' });
       }
 
+      // Populate the exam with related data
+      const populatedExam = await Exam.findById(updatedExam._id)
+        .populate({
+          path: 'course',
+          select: 'name subject',
+          populate: {
+            path: 'subject',
+            select: 'name college',
+            populate: {
+              path: 'college',
+              select: 'name code'
+            }
+          },
+        })
+        .populate('college', 'name code')
+        .populate('createdBy', 'name email')
+        .populate('assignedBatches', 'name description year');
+
       return res.status(200).json({
         success: true,
-        exam: updatedExam,
+        exam: populatedExam,
       });
     } catch (error: any) {
       console.error('Error updating exam:', error);

@@ -5,6 +5,7 @@ import Exam from '../../../../models/Exam';
 import User from '../../../../models/User';
 import Result from '../../../../models/Result';
 import * as mongooseUtils from '../../../../utils/mongooseUtils';
+import { validateStudentSubscription } from '../../../../utils/subscriptionValidation';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   await dbConnect();
@@ -27,6 +28,24 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       }
 
       const studentBatchId = student.batch;
+
+      // ✅ ADD: Subscription validation
+      console.log(`🔍 Validating subscription for student: ${req.user.userId}, batch: ${studentBatchId}`);
+      const subscriptionValidation = await validateStudentSubscription(req.user.userId, studentBatchId);
+      
+      if (!subscriptionValidation.valid) {
+        console.log(`❌ Subscription validation failed: ${subscriptionValidation.reason}`);
+        return res.status(403).json({
+          success: false,
+          message: subscriptionValidation.reason,
+          subscriptionRequired: subscriptionValidation.subscriptionPlan || null,
+          hasActiveSubscription: subscriptionValidation.hasActiveSubscription,
+          subscriptionExpired: subscriptionValidation.subscriptionExpired,
+          batchNotAssigned: subscriptionValidation.batchNotAssigned
+        });
+      }
+
+      console.log(`✅ Subscription validation passed for student: ${req.user.userId}`);
 
       // Build query for exams assigned to student's batch
       const examQuery = {
