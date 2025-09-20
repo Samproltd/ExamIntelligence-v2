@@ -18,11 +18,35 @@ interface Student {
   averageScore: number;
   dateOfBirth?: string;
   mobile?: string;
+  rollNumber?: string;
   batch?: {
     _id: string;
     name: string;
+    year: number;
+    department?: string;
+    semester?: number;
   };
+  college?: {
+    _id: string;
+    name: string;
+    code: string;
+    address: string;
+  };
+  subscription?: {
+    _id: string;
+    plan: {
+      _id: string;
+      name: string;
+      price: number;
+      duration: number;
+    };
+    status: 'active' | 'expired' | 'pending' | 'cancelled';
+    startDate: string;
+    endDate: string;
+  };
+  subscriptionStatus?: 'active' | 'expired' | 'none' | 'pending';
   isBlocked?: boolean;
+  isVerified?: boolean;
 }
 
 interface Batch {
@@ -30,6 +54,21 @@ interface Batch {
   name: string;
   description: string;
   year: number;
+  isActive: boolean;
+}
+
+interface College {
+  _id: string;
+  name: string;
+  code: string;
+  address: string;
+}
+
+interface SubscriptionPlan {
+  _id: string;
+  name: string;
+  price: number;
+  duration: number;
   isActive: boolean;
 }
 
@@ -44,6 +83,13 @@ const StudentsPage: React.FC = () => {
   const [deletingStudentId, setDeletingStudentId] = useState<string | null>(null);
   const [blockingStudentId, setBlockingStudentId] = useState<string | null>(null);
 
+  // Filter states
+  const [collegeFilter, setCollegeFilter] = useState('');
+  const [subscriptionPlanFilter, setSubscriptionPlanFilter] = useState('');
+  const [subscriptionStatusFilter, setSubscriptionStatusFilter] = useState('');
+  const [batchFilter, setBatchFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState(''); // active, blocked, all
+
   // Add student modal state
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
   const [newStudentFirstName, setNewStudentFirstName] = useState('');
@@ -57,9 +103,13 @@ const StudentsPage: React.FC = () => {
   const [isAddingStudent, setIsAddingStudent] = useState(false);
   const [addStudentError, setAddStudentError] = useState<string | null>(null);
 
-  // Batches for dropdown
+  // Data for dropdowns
   const [batches, setBatches] = useState<Batch[]>([]);
+  const [colleges, setColleges] = useState<College[]>([]);
+  const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([]);
   const [loadingBatches, setLoadingBatches] = useState(false);
+  const [loadingColleges, setLoadingColleges] = useState(false);
+  const [loadingSubscriptionPlans, setLoadingSubscriptionPlans] = useState(false);
 
   // Toast notifications
   const { toast, showSuccess, showError, hideToast } = useToast();
@@ -79,11 +129,16 @@ const StudentsPage: React.FC = () => {
             page: currentPage,
             limit: studentsPerPage,
             search: searchTerm,
+            college: collegeFilter,
+            subscriptionPlan: subscriptionPlanFilter,
+            subscriptionStatus: subscriptionStatusFilter,
+            batch: batchFilter,
+            status: statusFilter,
           },
         });
 
-        setStudents(response.data.students);
-        setTotalPages(Math.ceil(response.data.total / studentsPerPage));
+        setStudents(response.data.students || []);
+        setTotalPages(Math.ceil((response.data.total || 0) / studentsPerPage));
         setError(null);
       } catch (err: any) {
         const errorMessage = err.response?.data?.message || 'Failed to fetch students';
@@ -96,46 +151,73 @@ const StudentsPage: React.FC = () => {
 
     fetchStudents();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, searchTerm]);
+  }, [currentPage, searchTerm, collegeFilter, subscriptionPlanFilter, subscriptionStatusFilter, batchFilter, statusFilter]);
 
-  // Fetch batches
+  // Fetch filter data
   useEffect(() => {
-    const fetchBatches = async () => {
+    const fetchFilterData = async () => {
       try {
-        setLoadingBatches(true);
         const token = localStorage.getItem('token');
 
-        const response = await axios.get('/api/batches', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          params: {
-            limit: 100, // Fetch a large number to get all batches
-            sort: 'name', // Sort by name
-          },
+        // Fetch batches
+        setLoadingBatches(true);
+        const batchesResponse = await axios.get('/api/batches', {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { limit: 100, sort: 'name' },
         });
-
-        setBatches(response.data.batches);
-      } catch (err: any) {
-        const errorMessage = err.response?.data?.message || 'Failed to fetch batches';
-        console.error('Failed to fetch batches:', err);
-        showError(errorMessage);
-      } finally {
+        setBatches(batchesResponse.data.batches || []);
         setLoadingBatches(false);
+
+        // Fetch colleges
+        setLoadingColleges(true);
+        const collegesResponse = await axios.get('/api/colleges', {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { limit: 100, sort: 'name' },
+        });
+        setColleges(collegesResponse.data.colleges || []);
+        setLoadingColleges(false);
+
+        // Fetch subscription plans
+        setLoadingSubscriptionPlans(true);
+        const plansResponse = await axios.get('/api/subscription-plans', {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { limit: 100, sort: 'name' },
+        });
+        setSubscriptionPlans(plansResponse.data.subscriptionPlans || []);
+        setLoadingSubscriptionPlans(false);
+
+      } catch (err: any) {
+        const errorMessage = err.response?.data?.message || 'Failed to fetch filter data';
+        showError(errorMessage);
+        setLoadingBatches(false);
+        setLoadingColleges(false);
+        setLoadingSubscriptionPlans(false);
+        // Set empty arrays as fallbacks
+        setBatches([]);
+        setColleges([]);
+        setSubscriptionPlans([]);
       }
     };
 
-    // Fetch batches when the modal is opened
-    if (showAddStudentModal) {
-      fetchBatches();
-    }
+    fetchFilterData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showAddStudentModal]);
+  }, []);
 
   // Handle search
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setCurrentPage(1); // Reset to first page when searching
+  };
+
+  // Handle filter reset
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setCollegeFilter('');
+    setSubscriptionPlanFilter('');
+    setSubscriptionStatusFilter('');
+    setBatchFilter('');
+    setStatusFilter('');
+    setCurrentPage(1);
   };
 
   // Handle adding a new student
@@ -197,7 +279,6 @@ const StudentsPage: React.FC = () => {
         },
       });
 
-      // console.log('Response to the admin :',JSON.stringify(response))
       if (response.status == 201) {
         // Show success message
         showSuccess(`Student ${fullName} added successfully`);
@@ -228,7 +309,6 @@ const StudentsPage: React.FC = () => {
 
   // Handle block/unblock student
   const handleBlockStudent = async (studentId: string, studentName: string, isBlocked: boolean) => {
-    console.log('status:', isBlocked);
     const action = isBlocked ? 'unblock' : 'block';
     // if (!confirm(`Are you sure you want to ${action} ${studentName}?`)) {
     //   return;
@@ -272,11 +352,16 @@ const StudentsPage: React.FC = () => {
           page: currentPage,
           limit: studentsPerPage,
           search: searchTerm,
+          college: collegeFilter,
+          subscriptionPlan: subscriptionPlanFilter,
+          subscriptionStatus: subscriptionStatusFilter,
+          batch: batchFilter,
+          status: statusFilter,
         },
       });
 
-      setStudents(response.data.students);
-      setTotalPages(Math.ceil(response.data.total / studentsPerPage));
+      setStudents(response.data.students || []);
+      setTotalPages(Math.ceil((response.data.total || 0) / studentsPerPage));
       setError(null);
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Failed to fetch students';
@@ -329,19 +414,128 @@ const StudentsPage: React.FC = () => {
                   Add Student
                 </Button>
 
-                {/* Search form */}
-                <form onSubmit={handleSearch} className="flex">
+                {/* Reset Filters Button */}
+                <Button variant="outline" onClick={handleResetFilters}>
+                  Reset Filters
+                </Button>
+              </div>
+            </div>
+
+            {/* Advanced Filters */}
+            <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+              <h2 className="text-lg font-semibold mb-4">Filters</h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+                {/* Search */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
                   <input
                     type="text"
-                    className="form-control rounded-r-none"
-                    placeholder="Search by name or email"
+                    className="form-control"
+                    placeholder="Name or email"
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
                   />
-                  <Button type="submit" variant="primary" className="rounded-l-none">
-                    Search
-                  </Button>
-                </form>
+                </div>
+
+                {/* College Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">College</label>
+                  <select
+                    className="form-control"
+                    value={collegeFilter}
+                    onChange={e => setCollegeFilter(e.target.value)}
+                  >
+                    <option value="">All Colleges</option>
+                    {loadingColleges ? (
+                      <option disabled>Loading...</option>
+                    ) : (
+                      colleges?.map(college => (
+                        <option key={college._id} value={college._id}>
+                          {college.name}
+                        </option>
+                      )) || []
+                    )}
+                  </select>
+                </div>
+
+                {/* Batch Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Batch</label>
+                  <select
+                    className="form-control"
+                    value={batchFilter}
+                    onChange={e => setBatchFilter(e.target.value)}
+                  >
+                    <option value="">All Batches</option>
+                    {loadingBatches ? (
+                      <option disabled>Loading...</option>
+                    ) : (
+                      batches?.map(batch => (
+                        <option key={batch._id} value={batch._id}>
+                          {batch.name} ({batch.year})
+                        </option>
+                      )) || []
+                    )}
+                  </select>
+                </div>
+
+                {/* Subscription Plan Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Subscription Plan</label>
+                  <select
+                    className="form-control"
+                    value={subscriptionPlanFilter}
+                    onChange={e => setSubscriptionPlanFilter(e.target.value)}
+                  >
+                    <option value="">All Plans</option>
+                    {loadingSubscriptionPlans ? (
+                      <option disabled>Loading...</option>
+                    ) : (
+                      subscriptionPlans?.map(plan => (
+                        <option key={plan._id} value={plan._id}>
+                          {plan.name}
+                        </option>
+                      )) || []
+                    )}
+                  </select>
+                </div>
+
+                {/* Subscription Status Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Subscription Status</label>
+                  <select
+                    className="form-control"
+                    value={subscriptionStatusFilter}
+                    onChange={e => setSubscriptionStatusFilter(e.target.value)}
+                  >
+                    <option value="">All Statuses</option>
+                    <option value="active">Active</option>
+                    <option value="expired">Expired</option>
+                    <option value="pending">Pending</option>
+                    <option value="none">No Subscription</option>
+                  </select>
+                </div>
+
+                {/* Account Status Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Account Status</label>
+                  <select
+                    className="form-control"
+                    value={statusFilter}
+                    onChange={e => setStatusFilter(e.target.value)}
+                  >
+                    <option value="">All Statuses</option>
+                    <option value="active">Active</option>
+                    <option value="blocked">Blocked</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <Button type="button" variant="primary" onClick={handleSearch}>
+                  Apply Filters
+                </Button>
               </div>
             </div>
 
@@ -352,7 +546,7 @@ const StudentsPage: React.FC = () => {
               </div>
             ) : error ? (
               <div className="alert alert-error">{error}</div>
-            ) : students.length === 0 ? (
+            ) : !students || students.length === 0 ? (
               <div className="bg-white p-8 rounded-lg shadow-md text-center">
                 <p className="text-gray-500">No students found.</p>
               </div>
@@ -361,157 +555,196 @@ const StudentsPage: React.FC = () => {
                 <table className="min-w-full">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Name
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Student Details
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Email
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        College & Batch
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Batch
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Subscription
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Registered On
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Performance
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Exams Taken
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Avg. Score
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {students.map(student => (
+                    {students?.map(student => (
                       <tr key={student._id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {student.firstName && student.lastName
-                              ? `${student.firstName} ${student.lastName}`
-                              : student.name}
+                        {/* Student Details */}
+                        <td className="px-4 py-4">
+                          <div className="flex flex-col">
+                            <div className="text-sm font-medium text-gray-900">
+                              {student.firstName && student.lastName
+                                ? `${student.firstName} ${student.lastName}`
+                                : student.name}
+                            </div>
+                            <div className="text-sm text-gray-500">{student.email}</div>
+                            {student.mobile && (
+                              <div className="text-xs text-gray-400">{student.mobile}</div>
+                            )}
+                            {student.rollNumber && (
+                              <div className="text-xs text-gray-400">Roll: {student.rollNumber}</div>
+                            )}
+                            <div className="text-xs text-gray-400">
+                              Joined: {new Date(student.createdAt).toLocaleDateString()}
+                            </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">{student.email}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">
-                            {student.batch ? student.batch.name : '-'}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">
-                            {new Date(student.createdAt).toLocaleDateString()}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">{student.examsTaken}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">
-                            {student.averageScore ? `${student.averageScore.toFixed(1)}%` : '-'}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center space-x-3">
-                            <button
-                              onClick={() =>
-                                handleBlockStudent(
-                                  student._id,
-                                  student.firstName && student.lastName
-                                    ? `${student.firstName} ${student.lastName}`
-                                    : student.name,
-                                  student.isBlocked
-                                )
-                              }
-                              className={`px-2 py-1 text-sm rounded border ${
-                                student.isBlocked
-                                  ? 'bg-green-50 text-green-600 hover:bg-green-100 border-green-200'
-                                  : 'bg-yellow-50 text-yellow-600 hover:bg-yellow-100 border-yellow-200'
-                              }`}
-                              aria-label={student.isBlocked ? 'Unblock student' : 'Block student'}
-                              disabled={blockingStudentId === student._id}
-                            >
-                              {blockingStudentId === student._id ? (
-                                <span className="flex items-center">
-                                  <svg
-                                    className={`animate-spin -ml-1 mr-2 h-4 w-4 ${student.isBlocked ? 'text-green-600' : 'text-yellow-600'}`}
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <circle
-                                      className="opacity-25"
-                                      cx="12"
-                                      cy="12"
-                                      r="10"
-                                      stroke="currentColor"
-                                      strokeWidth="4"
-                                    ></circle>
-                                    <path
-                                      className="opacity-75"
-                                      fill="currentColor"
-                                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                    ></path>
-                                  </svg>
-                                  {student.isBlocked ? 'Unblocking...' : 'Blocking...'}
-                                </span>
-                              ) : student.isBlocked ? (
-                                'Unblock'
-                              ) : (
-                                'Block'
-                              )}
-                            </button>
 
+                        {/* College & Batch */}
+                        <td className="px-4 py-4">
+                          <div className="flex flex-col">
+                            {student.college ? (
+                              <>
+                                <div className="text-sm font-medium text-gray-900">
+                                  {student.college.name}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {student.college.code}
+                                </div>
+                              </>
+                            ) : (
+                              <div className="text-sm text-gray-400">No College</div>
+                            )}
+                            {student.batch ? (
+                              <>
+                                <div className="text-sm text-gray-700 mt-1">
+                                  {student.batch.name}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {student.batch.year}
+                                  {student.batch.department && ` • ${student.batch.department}`}
+                                  {student.batch.semester && ` • Sem ${student.batch.semester}`}
+                                </div>
+                              </>
+                            ) : (
+                              <div className="text-sm text-gray-400 mt-1">No Batch</div>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Subscription */}
+                        <td className="px-4 py-4">
+                          <div className="flex flex-col">
+                            {student.subscription ? (
+                              <>
+                                <div className="text-sm font-medium text-gray-900">
+                                  {student.subscription.plan.name}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  ₹{student.subscription.plan.price} • {student.subscription.plan.duration} months
+                                </div>
+                                <div className={`text-xs px-2 py-1 rounded-full inline-block mt-1 ${
+                                  student.subscription.status === 'active' 
+                                    ? 'bg-green-100 text-green-800'
+                                    : student.subscription.status === 'expired'
+                                    ? 'bg-red-100 text-red-800'
+                                    : 'bg-yellow-100 text-yellow-800'
+                                }`}>
+                                  {student.subscription.status}
+                                </div>
+                                <div className="text-xs text-gray-400 mt-1">
+                                  {new Date(student.subscription.endDate).toLocaleDateString()}
+                                </div>
+                              </>
+                            ) : (
+                              <div className="text-sm text-gray-400">No Subscription</div>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Performance */}
+                        <td className="px-4 py-4">
+                          <div className="flex flex-col">
+                            <div className="text-sm text-gray-900">
+                              {student.examsTaken} exams taken
+                            </div>
+                            <div className="text-sm text-gray-700">
+                              Avg: {student.averageScore ? `${student.averageScore.toFixed(1)}%` : 'N/A'}
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Status */}
+                        <td className="px-4 py-4">
+                          <div className="flex flex-col space-y-1">
+                            <div className={`text-xs px-2 py-1 rounded-full inline-block ${
+                              student.isBlocked 
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-green-100 text-green-800'
+                            }`}>
+                              {student.isBlocked ? 'Blocked' : 'Active'}
+                            </div>
+                            {student.isVerified !== undefined && (
+                              <div className={`text-xs px-2 py-1 rounded-full inline-block ${
+                                student.isVerified 
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {student.isVerified ? 'Verified' : 'Unverified'}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        {/* Actions */}
+                        <td className="px-4 py-4">
+                          <div className="flex flex-col space-y-2">
                             <Link href={`/admin/students/${student._id}`}>
-                              <span className="text-primary-color hover:underline">
+                              <span className="text-blue-600 hover:underline text-sm">
                                 View Details
                               </span>
                             </Link>
-                            <button
-                              onClick={() =>
-                                handleDeleteStudent(
-                                  student._id,
-                                  student.firstName && student.lastName
-                                    ? `${student.firstName} ${student.lastName}`
-                                    : student.name
-                                )
-                              }
-                              className="px-2 py-1 text-sm bg-red-50 text-red-600 hover:bg-red-100 rounded border border-red-200"
-                              aria-label="Delete student"
-                              disabled={deletingStudentId === student._id}
-                            >
-                              {deletingStudentId === student._id ? (
-                                <span className="flex items-center">
-                                  <svg
-                                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-red-600"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <circle
-                                      className="opacity-25"
-                                      cx="12"
-                                      cy="12"
-                                      r="10"
-                                      stroke="currentColor"
-                                      strokeWidth="4"
-                                    ></circle>
-                                    <path
-                                      className="opacity-75"
-                                      fill="currentColor"
-                                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                    ></path>
-                                  </svg>
-                                  Deleting...
-                                </span>
-                              ) : (
-                                'Delete'
-                              )}
-                            </button>
+                            
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() =>
+                                  handleBlockStudent(
+                                    student._id,
+                                    student.firstName && student.lastName
+                                      ? `${student.firstName} ${student.lastName}`
+                                      : student.name,
+                                    student.isBlocked
+                                  )
+                                }
+                                className={`px-2 py-1 text-xs rounded ${
+                                  student.isBlocked
+                                    ? 'bg-green-50 text-green-600 hover:bg-green-100'
+                                    : 'bg-yellow-50 text-yellow-600 hover:bg-yellow-100'
+                                }`}
+                                disabled={blockingStudentId === student._id}
+                              >
+                                {blockingStudentId === student._id ? (
+                                  'Processing...'
+                                ) : student.isBlocked ? (
+                                  'Unblock'
+                                ) : (
+                                  'Block'
+                                )}
+                              </button>
+
+                              <button
+                                onClick={() =>
+                                  handleDeleteStudent(
+                                    student._id,
+                                    student.firstName && student.lastName
+                                      ? `${student.firstName} ${student.lastName}`
+                                      : student.name
+                                  )
+                                }
+                                className="px-2 py-1 text-xs bg-red-50 text-red-600 hover:bg-red-100 rounded"
+                                disabled={deletingStudentId === student._id}
+                              >
+                                {deletingStudentId === student._id ? 'Deleting...' : 'Delete'}
+                              </button>
+                            </div>
                           </div>
                         </td>
                       </tr>
@@ -675,11 +908,11 @@ const StudentsPage: React.FC = () => {
                         {loadingBatches ? (
                           <option disabled>Loading batches...</option>
                         ) : (
-                          batches.map(batch => (
+                          batches?.map(batch => (
                             <option key={batch._id} value={batch._id}>
                               {batch.name} ({batch.year})
                             </option>
-                          ))
+                          )) || []
                         )}
                       </select>
                     </div>
